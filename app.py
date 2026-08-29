@@ -7,23 +7,41 @@ from datetime import datetime
 
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
+# ตั้งค่าสถานะเริ่มต้นใน session_state
 if 'selected_ticker' not in st.session_state:
     st.session_state.selected_ticker = "RKLB"
 
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)"
+
 default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", "RKLB", "ONDS"]
 
+# เมนูด้านข้าง (ผูกกับ session_state เพื่อให้สลับหน้าได้ถูกต้อง)
 st.sidebar.title("📌 เมนูหลัก")
-page = st.sidebar.radio("เลือกหน้า", ["🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)", "📊 ค้นหาและดูกราฟรายตัว"])
+page_options = ["🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)", "📊 ค้นหาและดูกราฟรายตัว"]
 
+current_index = page_options.index(st.session_state.current_page) if st.session_state.current_page in page_options else 0
+page = st.sidebar.radio("เลือกหน้า", page_options, index=current_index)
+st.session_state.current_page = page
+
+# ==========================================
+# หน้าที่ 1: กระดานหุ้นยอดฮิตตลาดอเมริกา
+# ==========================================
 if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)":
     st.title("🇺🇸 กระดานหุ้นยอดฮิตตลาดสหรัฐอเมริกา (Real-time Market)")
-    st.write("คุณสามารถเลือกหุ้นจากเมนูด้านล่างนี้เพื่อเจาะลึกดูกราฟและข้อมูลเชิงลึกได้ทันทีครับ")
+    st.write("เลือกหุ้นที่คุณต้องการดูข้อมูลเชิงลึกจากเมนูด้านล่างนี้ได้ทันทีครับ")
 
-    # ทำปุ่มลัดเลือกหุ้นด้านบนตารางเพื่อให้กดง่าย
-    selected_btn = st.selectbox("🎯 เลือกหุ้นที่ต้องการดูข้อมูลด่วน:", default_tickers, index=default_tickers.index(st.session_state.selected_ticker) if st.session_state.selected_ticker in default_tickers else 0)
-    if st.button("🚀 ไปดูข้อมูลเชิงลึกของหุ้นนี้"):
-        st.session_state.selected_ticker = selected_btn
-        st.rerun()
+    # ช่องเลือกหุ้นด่วนและปุ่มกดพุ่งไปหน้ากราฟ
+    col_sel1, col_sel2 = st.columns([3, 1])
+    with col_sel1:
+        selected_btn = st.selectbox("🎯 เลือกหุ้นที่ต้องการดูข้อมูลด่วน:", default_tickers, index=default_tickers.index(st.session_state.selected_ticker) if st.session_state.selected_ticker in default_tickers else 0)
+    with col_sel2:
+        st.write("") # เว้นบรรทัดให้ตรงกับช่อง selectbox
+        st.write("")
+        if st.button("🚀 ไปดูข้อมูลเชิงลึก", use_container_width=True):
+            st.session_state.selected_ticker = selected_btn
+            st.session_state.current_page = "📊 ค้นหาและดูกราฟรายตัว"
+            st.rerun()
 
     st.divider()
     
@@ -75,8 +93,26 @@ if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริ�
             df_market['Sector'].str.contains(search_query, case=False, na=False)
         ]
 
-    st.dataframe(df_market, use_container_width=True, hide_index=True)
+    # ตารางแบบกดเลือกแถวเพื่อสลับหน้าอัตโนมัติ
+    event = st.dataframe(
+        df_market, 
+        use_container_width=True, 
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row"
+    )
 
+    selected_rows = event.selection.get("rows", [])
+    if selected_rows:
+        row_index = selected_rows[0]
+        chosen_ticker = df_market.iloc[row_index]["Ticker"]
+        st.session_state.selected_ticker = chosen_ticker
+        st.session_state.current_page = "📊 ค้นหาและดูกราฟรายตัว"
+        st.rerun()
+
+# ==========================================
+# หน้าที่ 2: ค้นหาและดูกราฟรายตัว
+# ==========================================
 elif page == "📊 ค้นหาและดูกราฟรายตัว":
     st.title("📈 คลังข้อมูลหุ้นรายตัว Project Kairuay")
 
