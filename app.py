@@ -3,6 +3,7 @@ import yfinance as yf
 import plotly.graph_objects as go
 import feedparser
 from datetime import datetime
+from deep_translator import GoogleTranslator
 
 st.title("📈 คลังข้อมูลหุ้น Project Kairuay")
 
@@ -44,16 +45,12 @@ if not history.empty and current_price:
     
     price_str = f"{current_price:,.2f}"
     
-    # ตรวจสอบราคาหลังปิดตลาด (After-hours)
     post_market = info.get('postMarketPrice')
     if post_market:
         post_change = post_market - current_price
         post_percent = (post_change / current_price) * 100
-        
         post_color = "#00C805" if post_change >= 0 else "#FF3333"
         post_sign = "+" if post_change >= 0 else ""
-        
-        # แก้ไขจุดที่เกิน: ลบเครื่องหมาย > ที่เกินออกให้ถูกต้อง
         price_str += f' <span style="font-size:16px; color:gray;">(หลังปิดตลาด: {post_market:,.2f} <span style="color:{post_color};">{post_sign}{post_change:,.2f} [{post_sign}{post_percent:.2f}%]</span>)</span>'
 
     delta_sign = "+" if price_change >= 0 else ""
@@ -121,17 +118,22 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสารผ่าน RSS Feed
+# ส่วนที่ 4: ข่าวสารพร้อมสรุปย่อเป็นภาษาไทย
 # ==========================================
-st.write("### 📰 LATEST NEWS")
+st.write("### 📰 LATEST NEWS (สรุปย่อภาษาไทย)")
 
 rss_url = f"https://finance.yahoo.com/rss/headline?s={ticker_symbol}"
 feed = feedparser.parse(rss_url)
 
 if feed.entries:
-    for entry in feed.entries[:6]:
+    translator = GoogleTranslator(source='auto', target='th')
+    
+    for entry in feed.entries[:5]: # แสดง 5 ข่าวล่าสุดเพื่อให้โหลดหน้าเว็บได้รวดเร็ว
         title = entry.get('title', 'ไม่มีหัวข้อข่าว')
         link = entry.get('link', '#')
+        
+        # ดึงเนื้อหาย่อจาก RSS Feed (ถ้ามี)
+        summary = entry.get('summary', title)
         
         publisher = "Yahoo Finance"
         if hasattr(entry, 'source') and 'title' in entry.source:
@@ -144,8 +146,17 @@ if feed.entries:
             except:
                 pass
 
+        # แปลหัวข้อและเนื้อหาย่อเป็นภาษาไทย
+        try:
+            th_title = translator.translate(title)
+            th_summary = translator.translate(summary)
+        except:
+            th_title = title
+            th_summary = summary
+
         st.markdown(f"**{publisher}** • {time_str}")
-        st.markdown(f"[{title}]({link})")
+        st.markdown(f"[{th_title}]({link})")
+        st.markdown(f"<p style='color: #b0b0b0; font-size: 14px;'>{th_summary}</p>", unsafe_allow_html=True)
         st.write("---")
 else:
     st.warning("ไม่พบข้อมูลข่าวสารสำหรับหุ้นตัวนี้ในขณะนี้")
