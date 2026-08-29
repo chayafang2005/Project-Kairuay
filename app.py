@@ -7,7 +7,6 @@ from datetime import datetime
 
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
-# ตั้งค่าสถานะเริ่มต้น
 if 'search_ticker' not in st.session_state:
     st.session_state.search_ticker = "AAPL"
 
@@ -16,75 +15,55 @@ if 'watchlist' not in st.session_state:
 
 st.title("📈 Project Kairuay: คลังข้อมูลและกราฟหุ้นสหรัฐฯ")
 
-# แบ่งหน้าจอหลักเป็น 2 ฝั่ง (ซ้าย: ตารางหุ้นติดตาม [สัดส่วน 1], ขวา: รายละเอียด กราฟ ข่าว [สัดส่วน 3])
 left_col, right_col = st.columns([1, 3])
 
 # ==========================================
-# ฝั่งซ้าย: ตารางหุ้นที่ติดตาม (Interactive Watchlist Table)
+# ฝั่งซ้าย: รายการหุ้นที่ติดตามแบบปุ่มคลิกครั้งเดียว
 # ==========================================
 with left_col:
     st.subheader("⭐ หุ้นที่ติดตาม")
     
-    # ช่องเพิ่มหุ้นเข้า Watchlist
     new_watch = st.text_input("➕ เพิ่มรหัสหุ้น:", "").upper().strip()
     if new_watch:
         if new_watch not in st.session_state.watchlist:
             st.session_state.watchlist.append(new_watch)
             st.rerun()
 
-    # ดึงข้อมูลราคาของหุ้นใน Watchlist มาแสดงในตาราง
-    @st.cache_data(ttl=60)
-    def get_watchlist_data(tickers):
-        data = []
-        for t in tickers:
-            try:
-                tk = yf.Ticker(t)
-                inf = tk.info
-                price = inf.get('currentPrice') or inf.get('regularMarketPrice') or 0
-                prev_close = inf.get('previousClose') or inf.get('regularMarketPreviousClose') or price
-                change = price - prev_close
-                pct = (change / prev_close) * 100 if prev_close else 0
-                data.append({
-                    "Ticker": t,
-                    "Price": round(price, 2),
-                    "Change (%)": f"{pct:+.2f}%"
-                })
-            except:
-                data.append({"Ticker": t, "Price": 0.0, "Change (%)": "0.00%"})
-        return pd.DataFrame(data)
+    st.write("---")
+    st.markdown("<p style='font-size: 13px; color: gray;'>คลิกชื่อหุ้นเพื่อดูข้อมูลทันที:</p>", unsafe_allow_html=True)
 
-    if st.session_state.watchlist:
-        df_watch = get_watchlist_data(st.session_state.watchlist)
-        
-        # แสดงตารางแบบคลิกเลือกแถวได้
-        event = st.dataframe(
-            df_watch, 
-            use_container_width=True, 
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="single-row"
-        )
+    # แสดงผลหุ้นแต่ละตัวเป็นปุ่มกดคลิกครั้งเดียว
+    for t in st.session_state.watchlist:
+        try:
+            tk = yf.Ticker(t)
+            inf = tk.info
+            price = inf.get('currentPrice') or inf.get('regularMarketPrice') or 0
+            prev_close = inf.get('previousClose') or inf.get('regularMarketPreviousClose') or price
+            change = price - prev_close
+            pct = (change / prev_close) * 100 if prev_close else 0
+            
+            color = "#00C805" if pct >= 0 else "#FF3333"
+            sign = "+" if pct >= 0 else ""
+            
+            btn_label = f"{t}  |  ${price:,.2f}  ({sign}{pct:.2f}%)"
+        except:
+            btn_label = f"{t}"
 
-        # หากคลิกเลือกแถวในตาราง ให้เปลี่ยนหุ้นที่กำลังแสดงผลทางขวา
-        selected_rows = event.selection.get("rows", [])
-        if selected_rows:
-            row_index = selected_rows[0]
-            st.session_state.search_ticker = df_watch.iloc[row_index]["Ticker"]
+        # ถ้าคลิกปุ่มนี้ ให้เปลี่ยนหุ้นทางขวาทันทีโดยไม่ต้องกดซ้ำ
+        if st.button(btn_label, use_container_width=True, key=f"watch_btn_{t}"):
+            st.session_state.search_ticker = t
             st.rerun()
 
-        # ปุ่มลบหุ้นออกจาก Watchlist
-        remove_target = st.selectbox("🗑️ เลือกหุ้นที่จะลบออก:", [""] + st.session_state.watchlist)
-        if remove_target and st.button("ลบออกจากรายการ"):
-            st.session_state.watchlist.remove(remove_target)
-            st.rerun()
-    else:
-        st.info("ยังไม่มีหุ้นในรายการติดตาม")
+    st.write("")
+    remove_target = st.selectbox("🗑️ เลือกหุ้นที่จะลบออก:", [""] + st.session_state.watchlist)
+    if remove_target and st.button("ลบออกจากรายการ"):
+        st.session_state.watchlist.remove(remove_target)
+        st.rerun()
 
 # ==========================================
-# ฝั่งขวา: ค้นหา ข้อมูลบริษัท กราฟ และข่าวสาร
+# ฝั่งขวา: ข้อมูลบริษัท กราฟ และข่าวสาร
 # ==========================================
 with right_col:
-    # ช่องค้นหาอิสระด้านบนขวา
     search_input = st.text_input("🔍 ค้นหาหุ้นตัวอื่นๆ ในตลาดสหรัฐฯ:", st.session_state.search_ticker).upper().strip()
     if search_input and search_input != st.session_state.search_ticker:
         st.session_state.search_ticker = search_input
@@ -95,7 +74,6 @@ with right_col:
     info = ticker_data.info
     company_name = info.get('longName') or current_ticker
 
-    # ปุ่มกดเพิ่ม/ลบดาว ⭐ สำหรับหุ้นปัจจุบัน
     is_watched = current_ticker in st.session_state.watchlist
     col_h1, col_h2 = st.columns([8, 2])
     with col_h1:
@@ -112,7 +90,6 @@ with right_col:
                     st.session_state.watchlist.append(current_ticker)
                 st.rerun()
 
-    # แบ่งย่อยแสดงข้อมูลสำคัญและกราฟ
     main_c, info_c = st.columns([2, 1])
 
     with info_c:
@@ -195,7 +172,6 @@ with right_col:
         else:
             st.warning("ไม่พบข้อมูลกราฟของหุ้นนี้")
 
-    # ส่วนข่าวสาร
     st.divider()
     st.write(f"### 📰 LATEST NEWS & SUMMARY ({current_ticker})")
     rss_url = f"https://finance.yahoo.com/rss/headline?s={current_ticker}"
