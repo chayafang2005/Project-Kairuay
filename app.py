@@ -6,46 +6,49 @@ from datetime import datetime
 
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
+# กำหนดค่าเริ่มต้นใน session_state
+if 'search_ticker' not in st.session_state:
+    st.session_state.search_ticker = "AAPL"
+
 st.title("📈 Project Kairuay: คลังข้อมูลและกราฟหุ้นสหรัฐฯ")
-st.write("พิมพ์สัญลักษณ์หุ้นที่ต้องการค้นหา หรือคลิกปุ่มหุ้นแนะนำด้านล่างเพื่อดูข้อมูล กราฟ และข่าวสารแบบครบจบในหน้าเดียวครับ")
+st.write("เลือกหรือพิมพ์สัญลักษณ์หุ้นที่ต้องการ เพื่อดูข้อมูล กราฟแท่งเทียน และข่าวสารแบบครบจบในหน้าเดียวครับ")
 
 # ==========================================
-# ส่วนที่ 1: ช่องค้นหาหุ้นและปุ่มลัดแนะนำ
+# ส่วนที่ 1: ช่องค้นหาและปุ่มลัดเลือกหุ้น
 # ==========================================
-col_search, _ = st.columns([3, 1])
+default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "MU", "PLTR", "META", "NFLX", "AMD", "RKLB", "ONDS"]
 
-with col_search:
-    search_input = st.text_input("🔍 พิมพ์ชื่อย่อหุ้น (เช่น AAPL, MSFT, RKLB, MU, PLTR)", "ONDS").upper().strip()
+col1, col2 = st.columns([2, 1])
 
-default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "MU", "PLTR", "META", "NFLX", "AMD", "RKLB"]
+with col1:
+    # ใช้ selectbox ที่สามารถพิมพ์ค้นหาได้จริงในตัว ป้องกันปัญหากดแล้วข้อมูลไม่เปลี่ยน
+    selected_t = st.selectbox(
+        "🔍 ค้นหาหรือเลือกสัญลักษณ์หุ้น (Ticker):", 
+        default_tickers, 
+        index=default_tickers.index(st.session_state.search_ticker) if st.session_state.search_ticker in default_tickers else 0
+    )
+    if selected_t != st.session_state.search_ticker:
+        st.session_state.search_ticker = selected_t
+        st.rerun()
 
-st.markdown("**💡 หุ้นยอดฮิตแนะนำ:**")
-cols_hip = st.columns(6)
-for i, t in enumerate(default_tickers):
-    with cols_hip[i % 6]:
-        if st.button(f"📌 {t}", use_container_width=True):
-            search_input = t
+with col2:
+    st.write("")
+    st.write("")
+    manual_input = st.text_input("หรือพิมพ์รหัสหุ้นเองแล้วกด Enter:", "").upper().strip()
+    if manual_input:
+        st.session_state.search_ticker = manual_input
+        st.rerun()
 
 st.divider()
 
-ticker_symbol = search_input if search_input else "ONDS"
+ticker_symbol = st.session_state.search_ticker
 ticker_data = yf.Ticker(ticker_symbol)
 info = ticker_data.info
 
 company_name = info.get('longName') or ticker_symbol
 
-# ดึงเว็บไซต์บริษัทมาต่อกับ Clearbit Logo API เพื่อให้ได้รูปโลโก้ที่สวยงามและแม่นยำ
-logo_html = ""
-website = info.get('website')
-if website:
-    import urllib.parse
-    parsed_domain = urllib.parse.urlparse(website).netloc
-    if parsed_domain:
-        logo_url = f"https://logo.clearbit.com/{parsed_domain}"
-        logo_html = f"<img src='{logo_url}' width='40' style='vertical-align: middle; margin-right: 10px; border-radius: 6px;'>"
-
-# แสดงหัวข้อพร้อมโลโก้บริษัท
-st.markdown(f"### {logo_html} **{company_name} ({ticker_symbol})**", unsafe_allow_html=True)
+# แสดงชื่อหัวข้อหุ้นแบบสะอาดตาและชัดเจน
+st.markdown(f"## 🏢 {company_name} ({ticker_symbol})")
 
 # ==========================================
 # ส่วนที่ 2: แสดงข้อมูลบริษัทและกราฟ (แบ่ง 2 คอลัมน์)
@@ -91,7 +94,7 @@ with info_col:
 # ฝั่งซ้าย: ราคาปัจจุบัน, ช่วงเวลา และกราฟแท่งเทียน
 with main_col:
     period_options = {"1 วัน": "1d", "5 วัน": "5d", "1 เดือน": "1mo", "3 เดือน": "3mo", "6 เดือน": "6mo", "1 ปี": "1y", "5 ปี": "5y"}
-    selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True)
+    selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True, key="period_radio")
     period_value = period_options[selected_period]
 
     interval_value = "1d"
