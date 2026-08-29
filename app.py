@@ -7,7 +7,6 @@ from datetime import datetime
 
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
-# ตั้งค่าสถานะเริ่มต้นใน session_state
 if 'selected_ticker' not in st.session_state:
     st.session_state.selected_ticker = "RKLB"
 
@@ -16,7 +15,6 @@ if 'current_page' not in st.session_state:
 
 default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", "RKLB", "ONDS"]
 
-# เมนูด้านข้าง (ผูกกับ session_state เพื่อให้สลับหน้าได้ถูกต้อง)
 st.sidebar.title("📌 เมนูหลัก")
 page_options = ["🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)", "📊 ค้นหาและดูกราฟรายตัว"]
 
@@ -29,14 +27,13 @@ st.session_state.current_page = page
 # ==========================================
 if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)":
     st.title("🇺🇸 กระดานหุ้นยอดฮิตตลาดสหรัฐอเมริกา (Real-time Market)")
-    st.write("เลือกหุ้นที่คุณต้องการดูข้อมูลเชิงลึกจากเมนูด้านล่างนี้ได้ทันทีครับ")
+    st.write("💡 **คลิกเลือกแถวในตาราง** หรือเลือกจากเมนูด่วนด้านล่างเพื่อดูข้อมูลเชิงลึกได้ทันทีครับ")
 
-    # ช่องเลือกหุ้นด่วนและปุ่มกดพุ่งไปหน้ากราฟ
     col_sel1, col_sel2 = st.columns([3, 1])
     with col_sel1:
         selected_btn = st.selectbox("🎯 เลือกหุ้นที่ต้องการดูข้อมูลด่วน:", default_tickers, index=default_tickers.index(st.session_state.selected_ticker) if st.session_state.selected_ticker in default_tickers else 0)
     with col_sel2:
-        st.write("") # เว้นบรรทัดให้ตรงกับช่อง selectbox
+        st.write("")
         st.write("")
         if st.button("🚀 ไปดูข้อมูลเชิงลึก", use_container_width=True):
             st.session_state.selected_ticker = selected_btn
@@ -93,7 +90,6 @@ if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริ�
             df_market['Sector'].str.contains(search_query, case=False, na=False)
         ]
 
-    # ตารางแบบกดเลือกแถวเพื่อสลับหน้าอัตโนมัติ
     event = st.dataframe(
         df_market, 
         use_container_width=True, 
@@ -111,9 +107,15 @@ if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริ�
         st.rerun()
 
 # ==========================================
-# หน้าที่ 2: ค้นหาและดูกราฟรายตัว
+# หน้าที่ 2: ค้นหาและดูกราฟรายตัว (พร้อมปุ่มย้อนกลับ)
 # ==========================================
 elif page == "📊 ค้นหาและดูกราฟรายตัว":
+    
+    # ปุ่มย้อนกลับไปหน้ากระดานหุ้น
+    if st.button("⬅️ กลับไปหน้ากระดานหุ้นทั้งหมด"):
+        st.session_state.current_page = "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)"
+        st.rerun()
+
     st.title("📈 คลังข้อมูลหุ้นรายตัว Project Kairuay")
 
     ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS, RKLB)", st.session_state.selected_ticker)
