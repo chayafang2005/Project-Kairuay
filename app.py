@@ -8,26 +8,41 @@ from datetime import datetime
 # ขยายหน้าจอเว็บให้กว้างขึ้น
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
+# สร้างตัวแปรกลางใน session_state เพื่อจำหุ้นที่ผู้ใช้เลือกดู
+if 'selected_ticker' not in st.session_state:
+    st.session_state.selected_ticker = "RKLB"
+
+# รายชื่อหุ้นยอดฮิตทั้งหมด
+default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", "RKLB", "ONDS"]
+
 # ==========================================
-# เมนูด้านข้างสำหรับเลือกหน้าเว็บ (สลับให้หน้าแรกเป็น US Stocks List)
+# เมนูด้านข้างสำหรับเลือกหน้าเว็บ
 # ==========================================
 st.sidebar.title("📌 เมนูหลัก")
 page = st.sidebar.radio("เลือกหน้า", ["🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)", "📊 ค้นหาและดูกราฟรายตัว"])
 
 # ==========================================
-# หน้าที่ 1: รายชื่อหุ้นยอดฮิตตลาดอเมริกา พร้อมราคาและเปอร์เซ็นต์แบบ Real-time
+# หน้าที่ 1: รายชื่อหุ้นยอดฮิตตลาดอเมริกา พร้อมปุ่มกดดูข้อมูลรายตัว
 # ==========================================
 if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)":
     st.title("🇺🇸 กระดานหุ้นยอดฮิตตลาดสหรัฐอเมริกา (Real-time Market)")
-    st.write("ตารางแสดงข้อมูลราคาปัจจุบัน, เปอร์เซ็นต์การเปลี่ยนแปลง และราคาช่วงหลังปิดตลาดของหุ้นยอดฮิต")
+    st.write("เลือกหุ้นที่คุณต้องการดูข้อมูลเชิงลึกจากรายชื่อด้านล่างนี้ได้ทันทีครับ")
 
-    # รายชื่อหุ้นตัวอย่าง
-    default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", "RKLB", "ONDS"]
+    # เพิ่มส่วนกดเลือกหุ้นอย่างรวดเร็ว
+    st.markdown("### 🔍 เลือกหุ้นเพื่อดูรายละเอียดเชิงลึก:")
+    cols = st.columns(6)
+    for i, t in enumerate(default_tickers):
+        with cols[i % 6]:
+            if st.button(f"📌 {t}", use_container_width=True):
+                st.session_state.selected_ticker = t # บันทึกหุ้นที่เลือก
+                st.session_state.page_switch = "📊 ค้นหาและดูกราฟรายตัว"
+                st.rerun() # สั่งรีเฟรชหน้าเว็บไปที่หน้ากราฟทันที
+
+    st.divider()
     
-    # ช่องค้นหาหุ้นในหน้ากระดาน
-    search_query = st.text_input("🔍 ค้นหาหรือกรองชื่อหุ้นในตาราง (เช่น AAPL, Tesla)", "")
+    search_query = st.text_input("🔍 ค้นหาหรือกรองชื่อหุ้นในตาราง", "")
 
-    @st.cache_data(ttl=60) # Cache ข้อมูลไว้ 60 วินาทีเพื่อความรวดเร็ว
+    @st.cache_data(ttl=60)
     def get_market_data(tickers):
         data_list = []
         for t in tickers:
@@ -66,7 +81,6 @@ if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริ�
     with st.spinner("กำลังดึงข้อมูลราคาตลาดล่าสุด..."):
         df_market = get_market_data(default_tickers)
 
-    # กรองข้อมูลตามช่องค้นหา
     if search_query:
         df_market = df_market[
             df_market['Ticker'].str.contains(search_query, case=False, na=False) |
@@ -74,17 +88,18 @@ if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริ�
             df_market['Sector'].str.contains(search_query, case=False, na=False)
         ]
 
-    # แสดงตารางข้อมูล
     st.dataframe(df_market, use_container_width=True, hide_index=True)
-    st.info("💡 **คำแนะนำ:** คุณสามารถคลิกที่เมนูด้านซ้าย **'ค้นหาและดูกราฟรายตัว'** เพื่อเจาะลึกดูกราฟแท่งเทียน ข่าวสาร และรายละเอียดเชิงลึกของหุ้นแต่ละตัวได้ทันทีครับ")
 
 # ==========================================
-# หน้าที่ 2: ค้นหาและดูกราฟรายตัว (หน้าหลักเดิม)
+# หน้าที่ 2: ค้นหาและดูกราฟรายตัว
 # ==========================================
 elif page == "📊 ค้นหาและดูกราฟรายตัว":
     st.title("📈 คลังข้อมูลหุ้นรายตัว Project Kairuay")
 
-    ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS, RKLB)", "RKLB")
+    # ช่องพิมพ์ชื่อหุ้น (เชื่อมกับค่าที่กดเลือกมาจากหน้าแรกอัตโนมัติ)
+    ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS, RKLB)", st.session_state.selected_ticker)
+    st.session_state.selected_ticker = ticker_symbol.upper() # อัปเดตค่าล่าสุด
+
     ticker_data = yf.Ticker(ticker_symbol)
     info = ticker_data.info
 
