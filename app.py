@@ -35,7 +35,7 @@ if not current_price and not history.empty:
     current_price = history['Close'].iloc[-1]
 
 # ==========================================
-# ส่วนที่ 2: แสดงราคาปัจจุบัน
+# ส่วนที่ 2: แสดงราคาปัจจุบันและราคาหลังปิดตลาด (พร้อมเปอร์เซ็นต์)
 # ==========================================
 if not history.empty and current_price:
     past_price = history['Close'].iloc[0]
@@ -45,9 +45,14 @@ if not history.empty and current_price:
     price_str = f"{current_price:,.2f}"
     delta_str = f"{price_change:+,.2f} ({percent_change:+,.2f}%)"
     
+    # ตรวจสอบและคำนวณราคาหลังปิดตลาด (After-hours)
     post_market = info.get('postMarketPrice')
+    regular_close = info.get('regularMarketPreviousClose') or past_price
+    
     if post_market:
-         price_str += f" (หลังปิดตลาด: {post_market:,.2f})"
+        post_change = post_market - current_price
+        post_percent = (post_change / current_price) * 100
+        price_str += f" (หลังปิดตลาด: {post_market:,.2f} | {post_change:+,.2f} [{post_percent:+,.2f}%])"
          
     st.metric(label=f"ราคาปัจจุบันเทียบกับ {selected_period}ที่แล้ว", value=price_str, delta=delta_str)
 
@@ -110,20 +115,18 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ดึงข่าวสารผ่าน RSS Feed (เสถียรและแม่นยำที่สุด)
+# ส่วนที่ 4: ข่าวสารผ่าน RSS Feed
 # ==========================================
 st.write("### 📰 LATEST NEWS")
 
-# ดึง RSS Feed ข่าวสารเฉพาะ Ticker นั้นๆ จาก Yahoo Finance
 rss_url = f"https://finance.yahoo.com/rss/headline?s={ticker_symbol}"
 feed = feedparser.parse(rss_url)
 
 if feed.entries:
-    for entry in feed.entries[:6]: # แสดง 6 ข่าวล่าสุด
+    for entry in feed.entries[:6]:
         title = entry.get('title', 'ไม่มีหัวข้อข่าว')
         link = entry.get('link', '#')
         
-        # ดึงสำนักพิมพ์และวันที่จาก RSS Feed
         publisher = "Yahoo Finance"
         if hasattr(entry, 'source') and 'title' in entry.source:
             publisher = entry.source.title
