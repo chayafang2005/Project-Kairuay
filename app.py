@@ -1,6 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
+import feedparser
 from datetime import datetime
 
 st.title("📈 คลังข้อมูลหุ้น Project Kairuay")
@@ -109,59 +110,33 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสาร (แก้ไขการดึงข้อมูลดิบให้แสดงผลเป็นข้อความสวยงาม)
+# ส่วนที่ 4: ดึงข่าวสารผ่าน RSS Feed (เสถียรและแม่นยำที่สุด)
 # ==========================================
 st.write("### 📰 LATEST NEWS")
-news = ticker_data.news
 
-if news:
-    for item in news[:6]:
-        title = item.get('title', 'อัปเดตข่าวสารการลงทุน')
+# ดึง RSS Feed ข่าวสารเฉพาะ Ticker นั้นๆ จาก Yahoo Finance
+rss_url = f"https://finance.yahoo.com/rss/headline?s={ticker_symbol}"
+feed = feedparser.parse(rss_url)
+
+if feed.entries:
+    for entry in feed.entries[:6]: # แสดง 6 ข่าวล่าสุด
+        title = entry.get('title', 'ไม่มีหัวข้อข่าว')
+        link = entry.get('link', '#')
         
-        # ดึงลิงก์ข่าว
-        link = "#"
-        raw_link = item.get('link')
-        if isinstance(raw_link, dict):
-            link = raw_link.get('url', '#')
-        elif isinstance(raw_link, str):
-            link = raw_link
-            
-        # ดึงชื่อสำนักพิมพ์
+        # ดึงสำนักพิมพ์และวันที่จาก RSS Feed
         publisher = "Yahoo Finance"
-        raw_pub = item.get('provider') or item.get('publisher')
-        if isinstance(raw_pub, dict):
-            publisher = raw_pub.get('displayName', 'Yahoo Finance')
-        elif isinstance(raw_pub, str):
-            publisher = raw_pub
+        if hasattr(entry, 'source') and 'title' in entry.source:
+            publisher = entry.source.title
             
-        # ดึงและแปลงเวลาข่าว
         time_str = ""
-        pub_time = item.get('providerPublishTime')
-        if pub_time:
+        if hasattr(entry, 'published_parsed') and entry.published_parsed:
             try:
-                time_str = datetime.fromtimestamp(int(pub_time)).strftime('%d %b %Y, %H:%M')
+                time_str = datetime(*entry.published_parsed[:6]).strftime('%d %b %Y, %H:%M')
             except:
                 pass
-            
-        # ดึงรูปภาพประกอบข่าว
-        img_url = ""
-        try:
-            thumbnails = item.get('thumbnail', {}).get('resolutions', [])
-            if thumbnails:
-                img_url = thumbnails[0].get('url', '')
-        except:
-            pass
 
-        col_news1, col_news2 = st.columns([3, 1])
-        
-        with col_news1:
-            st.markdown(f"**{publisher}** • {time_str}")
-            st.markdown(f"[{title}]({link})")
-            
-        with col_news2:
-            if img_url:
-                st.image(img_url, use_container_width=True)
-                
+        st.markdown(f"**{publisher}** • {time_str}")
+        st.markdown(f"[{title}]({link})")
         st.write("---")
 else:
-    st.warning("ไม่พบข้อมูลข่าวสารในขณะนี้")
+    st.warning("ไม่พบข้อมูลข่าวสารสำหรับหุ้นตัวนี้ในขณะนี้")
