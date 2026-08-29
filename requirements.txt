@@ -3,3 +3,4 @@ yfinance
 plotly
 feedparser
 deep-translator
+pandas
