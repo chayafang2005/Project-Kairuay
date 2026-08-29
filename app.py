@@ -27,7 +27,6 @@ if page == "🇺🇸 ค้นหาหุ้นในตลาดสหรั�
     st.title("🇺🇸 ค้นหาข้อมูลหุ้นทั้งหมดในตลาดสหรัฐอเมริกา")
     st.write("พิมพ์สัญลักษณ์หุ้น (Ticker) หรือชื่อบริษัทที่ต้องการ เพื่อตรวจสอบราคาและข้อมูลแบบ Real-time ได้ทันทีครับ")
 
-    # ช่องค้นหาอิสระ รองรับหุ้นทุกตัวใน US Market
     search_input = st.text_input("🔍 พิมพ์ชื่อย่อหุ้น (เช่น MU, PLTR, AAPL, TSLA)", "").upper().strip()
 
     if search_input:
@@ -38,7 +37,7 @@ if page == "🇺🇸 ค้นหาหุ้นในตลาดสหรั�
                 name = inf.get('longName')
                 
                 if not name:
-                    st.error(不พบข้อมูลหุ้นสัญลักษณ์นี้ กรุณาตรวจสอบความถูกต้องอีกครั้ง)
+                    st.error("ไม่พบข้อมูลหุ้นสัญลักษณ์นี้ กรุณาตรวจสอบความถูกต้องอีกครั้ง")
                 else:
                     sector = inf.get('sector', 'N/A')
                     price = inf.get('currentPrice') or inf.get('regularMarketPrice') or 0
@@ -54,7 +53,6 @@ if page == "🇺🇸 ค้นหาหุ้นในตลาดสหรั�
                         sign_post = "+" if post_change >= 0 else ""
                         post_str = f"{post_market:,.2f} ({sign_post}{post_change:,.2f} | {sign_post}{post_pct:.2f}%)"
 
-                    # แสดงผลลัพธ์เป็น Card สรุปข้อมูล
                     st.success(f"พบบริษัท: {name} ({search_input})")
                     
                     col_res1, col_res2, col_res3 = st.columns(3)
