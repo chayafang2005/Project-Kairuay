@@ -48,7 +48,7 @@ if not history.empty and current_price:
     if post_market:
          price_str += f" (หลังปิดตลาด: {post_market:,.2f})"
          
-    st.metric(label=f"ราคาปัจจุบันเทียบกับหลัก {selected_period}ที่แล้ว", value=price_str, delta=delta_str)
+    st.metric(label=f"ราคาปัจจุบันเทียบกับ {selected_period}ที่แล้ว", value=price_str, delta=delta_str)
 
 # ==========================================
 # ส่วนที่ 3: วาดกราฟ
@@ -109,17 +109,16 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสารสไตล์การ์ด (รองรับโครงสร้างใหม่)
+# ส่วนที่ 4: ข่าวสาร (แก้ไขการดึงข้อมูลดิบให้แสดงผลเป็นข้อความสวยงาม)
 # ==========================================
 st.write("### 📰 LATEST NEWS")
 news = ticker_data.news
 
 if news:
     for item in news[:6]:
-        # รองรับการดึงหัวข้อข่าวจากหลายคีย์ที่ Yahoo อาจจะใช้
-        title = item.get('title') or item.get('content') or item.get('headline') or 'อัปเดตข่าวสารการลงทุน'
+        title = item.get('title', 'อัปเดตข่าวสารการลงทุน')
         
-        # จัดการกรณีลิงก์ข่าวอยู่ในรูปแบบ nested dictionary
+        # ดึงลิงก์ข่าว
         link = "#"
         raw_link = item.get('link')
         if isinstance(raw_link, dict):
@@ -127,14 +126,20 @@ if news:
         elif isinstance(raw_link, str):
             link = raw_link
             
-        publisher = item.get('publisher', 'Yahoo Finance')
-        
-        # ดึงเวลาข่าว
-        pub_time = item.get('providerPublishTime')
+        # ดึงชื่อสำนักพิมพ์
+        publisher = "Yahoo Finance"
+        raw_pub = item.get('provider') or item.get('publisher')
+        if isinstance(raw_pub, dict):
+            publisher = raw_pub.get('displayName', 'Yahoo Finance')
+        elif isinstance(raw_pub, str):
+            publisher = raw_pub
+            
+        # ดึงและแปลงเวลาข่าว
         time_str = ""
+        pub_time = item.get('providerPublishTime')
         if pub_time:
             try:
-                time_str = datetime.fromtimestamp(pub_time).strftime('%d %b %Y, %H:%M')
+                time_str = datetime.fromtimestamp(int(pub_time)).strftime('%d %b %Y, %H:%M')
             except:
                 pass
             
