@@ -5,38 +5,25 @@ import feedparser
 import pandas as pd
 from datetime import datetime
 
-# ขยายหน้าจอเว็บให้กว้างขึ้น
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
-# สร้างตัวแปรกลางใน session_state เพื่อจำหุ้นที่ผู้ใช้เลือกดู
 if 'selected_ticker' not in st.session_state:
     st.session_state.selected_ticker = "RKLB"
 
-# รายชื่อหุ้นยอดฮิตทั้งหมด
 default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", "RKLB", "ONDS"]
 
-# ==========================================
-# เมนูด้านข้างสำหรับเลือกหน้าเว็บ
-# ==========================================
 st.sidebar.title("📌 เมนูหลัก")
 page = st.sidebar.radio("เลือกหน้า", ["🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)", "📊 ค้นหาและดูกราฟรายตัว"])
 
-# ==========================================
-# หน้าที่ 1: รายชื่อหุ้นยอดฮิตตลาดอเมริกา พร้อมปุ่มกดดูข้อมูลรายตัว
-# ==========================================
 if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)":
     st.title("🇺🇸 กระดานหุ้นยอดฮิตตลาดสหรัฐอเมริกา (Real-time Market)")
-    st.write("เลือกหุ้นที่คุณต้องการดูข้อมูลเชิงลึกจากรายชื่อด้านล่างนี้ได้ทันทีครับ")
+    st.write("คุณสามารถเลือกหุ้นจากเมนูด้านล่างนี้เพื่อเจาะลึกดูกราฟและข้อมูลเชิงลึกได้ทันทีครับ")
 
-    # เพิ่มส่วนกดเลือกหุ้นอย่างรวดเร็ว
-    st.markdown("### 🔍 เลือกหุ้นเพื่อดูรายละเอียดเชิงลึก:")
-    cols = st.columns(6)
-    for i, t in enumerate(default_tickers):
-        with cols[i % 6]:
-            if st.button(f"📌 {t}", use_container_width=True):
-                st.session_state.selected_ticker = t # บันทึกหุ้นที่เลือก
-                st.session_state.page_switch = "📊 ค้นหาและดูกราฟรายตัว"
-                st.rerun() # สั่งรีเฟรชหน้าเว็บไปที่หน้ากราฟทันที
+    # ทำปุ่มลัดเลือกหุ้นด้านบนตารางเพื่อให้กดง่าย
+    selected_btn = st.selectbox("🎯 เลือกหุ้นที่ต้องการดูข้อมูลด่วน:", default_tickers, index=default_tickers.index(st.session_state.selected_ticker) if st.session_state.selected_ticker in default_tickers else 0)
+    if st.button("🚀 ไปดูข้อมูลเชิงลึกของหุ้นนี้"):
+        st.session_state.selected_ticker = selected_btn
+        st.rerun()
 
     st.divider()
     
@@ -90,15 +77,11 @@ if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริ�
 
     st.dataframe(df_market, use_container_width=True, hide_index=True)
 
-# ==========================================
-# หน้าที่ 2: ค้นหาและดูกราฟรายตัว
-# ==========================================
 elif page == "📊 ค้นหาและดูกราฟรายตัว":
     st.title("📈 คลังข้อมูลหุ้นรายตัว Project Kairuay")
 
-    # ช่องพิมพ์ชื่อหุ้น (เชื่อมกับค่าที่กดเลือกมาจากหน้าแรกอัตโนมัติ)
     ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS, RKLB)", st.session_state.selected_ticker)
-    st.session_state.selected_ticker = ticker_symbol.upper() # อัปเดตค่าล่าสุด
+    st.session_state.selected_ticker = ticker_symbol.upper()
 
     ticker_data = yf.Ticker(ticker_symbol)
     info = ticker_data.info
@@ -107,7 +90,6 @@ elif page == "📊 ค้นหาและดูกราฟรายตัว"
 
     with info_col:
         st.markdown("### 📊 ข้อมูลสำคัญของหุ้น")
-        
         company_name = info.get('longName') or ticker_symbol
         sector = info.get('sector', 'ไม่ระบุ')
         industry = info.get('industry', 'ไม่ระบุ')
