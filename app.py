@@ -6,38 +6,38 @@ from datetime import datetime
 
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
-# กำหนดค่าเริ่มต้นใน session_state
 if 'search_ticker' not in st.session_state:
     st.session_state.search_ticker = "AAPL"
 
 st.title("📈 Project Kairuay: คลังข้อมูลและกราฟหุ้นสหรัฐฯ")
-st.write("เลือกหรือพิมพ์สัญลักษณ์หุ้นที่ต้องการ เพื่อดูข้อมูล กราฟแท่งเทียน และข่าวสารแบบครบจบในหน้าเดียวครับ")
+st.write("พิมพ์ค้นหาชื่อหุ้นหรือเลือกจากรายการแนะนำด้านล่างเพื่อดูข้อมูล กราฟแท่งเทียน และข่าวสารแบบครบจบในหน้าเดียวครับ")
 
 # ==========================================
-# ส่วนที่ 1: ช่องค้นหาและปุ่มลัดเลือกหุ้น
+# ส่วนที่ 1: ช่องค้นหาแบบพิมพ์แล้วขึ้นแนะนำอัตโนมัติ (Search & Auto-suggest)
 # ==========================================
-default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "MU", "PLTR", "META", "NFLX", "AMD", "RKLB", "ONDS"]
+# รายชื่อหุ้นตัวอย่างขนาดใหญ่ในตลาดสหรัฐฯ ที่จะให้ระบบช่วยแนะนำเวลาพิมพ์
+all_us_stocks = [
+    "AAPL - Apple Inc.", "MSFT - Microsoft Corporation", "GOOGL - Alphabet Inc. (Google)", 
+    "AMZN - Amazon.com Inc.", "NVDA - NVIDIA Corporation", "TSLA - Tesla Inc.", 
+    "META - Meta Platforms Inc.", "NFLX - Netflix Inc.", "AMD - Advanced Micro Devices", 
+    "INTC - Intel Corporation", "MU - Micron Technology", "PLTR - Palantir Technologies",
+    "RKLB - Rocket Lab USA", "ONDS - Ondas Holdings", "COIN - Coinbase Global",
+    "JPM - JPMorgan Chase & Co.", "V - Visa Inc.", "JNJ - Johnson & Johnson",
+    "WMT - Walmart Inc.", "DIS - The Walt Disney Company", "BAC - Bank of America",
+    "XOM - Exxon Mobil Corp.", "PFE - Pfizer Inc.", "PYPL - PayPal Holdings"
+]
 
-col1, col2 = st.columns([2, 1])
+# ใช้ st.selectbox ที่ผู้ใช้สามารถพิมพ์กรองตัวอักษรเพื่อหาหุ้นได้เหมือนช่องค้นหาอัจฉริยะ
+selected_stock_item = st.selectbox(
+    "🔍 พิมพ์ชื่อย่อหรือชื่อบริษัทเพื่อค้นหา (ระบบจะแนะนำรายชื่อให้อัตโนมัติ):", 
+    all_us_stocks,
+    index=0
+)
 
-with col1:
-    # ใช้ selectbox ที่สามารถพิมพ์ค้นหาได้จริงในตัว ป้องกันปัญหากดแล้วข้อมูลไม่เปลี่ยน
-    selected_t = st.selectbox(
-        "🔍 ค้นหาหรือเลือกสัญลักษณ์หุ้น (Ticker):", 
-        default_tickers, 
-        index=default_tickers.index(st.session_state.search_ticker) if st.session_state.search_ticker in default_tickers else 0
-    )
-    if selected_t != st.session_state.search_ticker:
-        st.session_state.search_ticker = selected_t
-        st.rerun()
-
-with col2:
-    st.write("")
-    st.write("")
-    manual_input = st.text_input("หรือพิมพ์รหัสหุ้นเองแล้วกด Enter:", "").upper().strip()
-    if manual_input:
-        st.session_state.search_ticker = manual_input
-        st.rerun()
+# ดึงเฉพาะรหัส Ticker ด้านหน้าสุดมาใช้งาน (เช่น "AAPL" จาก "AAPL - Apple Inc.")
+extracted_ticker = selected_stock_item.split(" - ")[0].strip()
+if extracted_ticker != st.session_state.search_ticker:
+    st.session_state.search_ticker = extracted_ticker
 
 st.divider()
 
@@ -47,7 +47,6 @@ info = ticker_data.info
 
 company_name = info.get('longName') or ticker_symbol
 
-# แสดงชื่อหัวข้อหุ้นแบบสะอาดตาและชัดเจน
 st.markdown(f"## 🏢 {company_name} ({ticker_symbol})")
 
 # ==========================================
@@ -55,7 +54,6 @@ st.markdown(f"## 🏢 {company_name} ({ticker_symbol})")
 # ==========================================
 main_col, info_col = st.columns([2, 1])
 
-# ฝั่งขวา: ข้อมูลสำคัญและลักษณะธุรกิจ
 with info_col:
     st.markdown("### 📊 ข้อมูลสำคัญของหุ้น")
     sector = info.get('sector', 'ไม่ระบุ')
@@ -91,7 +89,6 @@ with info_col:
         summary_short = summary
     st.markdown(f"<p style='color: #d0d0d0; font-size: 13px; line-height: 1.5;'>{summary_short}</p>", unsafe_allow_html=True)
 
-# ฝั่งซ้าย: ราคาปัจจุบัน, ช่วงเวลา และกราฟแท่งเทียน
 with main_col:
     period_options = {"1 วัน": "1d", "5 วัน": "5d", "1 เดือน": "1mo", "3 เดือน": "3mo", "6 เดือน": "6mo", "1 ปี": "1y", "5 ปี": "5y"}
     selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True, key="period_radio")
@@ -127,7 +124,7 @@ with main_col:
         delta_sign = "+" if price_change >= 0 else ""
         delta_str = f"{delta_sign}{price_change:,.2f} ({delta_sign}{percent_change:.2f}%)"
         
-        st.metric(label=f"ราคาปัจจุบันเทียบกับ {selected_period}ที่แล้ว", value=None, delta=delta_str)
+        st.metric(label=f"ราคาปัจจุบันเทียบกับหุ้น {selected_period}ที่แล้ว", value=None, delta=delta_str)
         st.markdown(f"### {price_str}", unsafe_allow_html=True)
 
     if not history.empty:
