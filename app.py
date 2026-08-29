@@ -3,7 +3,6 @@ import yfinance as yf
 import plotly.graph_objects as go
 import feedparser
 from datetime import datetime
-from deep_translator import GoogleTranslator
 
 st.title("📈 คลังข้อมูลหุ้น Project Kairuay")
 
@@ -118,17 +117,15 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสาร (แปลเฉพาะหัวข้อ ป้องกัน Server Error)
+# ส่วนที่ 4: ข่าวสาร (แสดงผลแบบเสถียร ปราศจาก Error)
 # ==========================================
-st.write("### 📰 LATEST NEWS (สรุปหัวข้อภาษาไทย)")
+st.write("### 📰 LATEST NEWS")
 
 rss_url = f"https://finance.yahoo.com/rss/headline?s={ticker_symbol}"
 feed = feedparser.parse(rss_url)
 
 if feed.entries:
-    translator = GoogleTranslator(source='auto', target='th')
-    
-    for entry in feed.entries[:5]:
+    for entry in feed.entries[:6]:
         title = entry.get('title', 'ไม่มีหัวข้อข่าว')
         link = entry.get('link', '#')
         
@@ -143,15 +140,8 @@ if feed.entries:
             except:
                 pass
 
-        # แปลเฉพาะหัวข้อข่าวเพื่อป้องกัน Error 500
-        try:
-            th_title = translator.translate(title)
-        except:
-            th_title = title
-
         st.markdown(f"**{publisher}** • {time_str}")
-        st.markdown(f"[{th_title}]({link})")
-        st.markdown(f"<p style='color: #b0b0b0; font-size: 13px;'>คลิกที่หัวข้อเพื่ออ่านรายละเอียดฉบับเต็มจากแหล่งข่าว</p>", unsafe_allow_html=True)
+        st.markdown(f"[{title}]({link})")
         st.write("---")
 else:
     st.warning("ไม่พบข้อมูลข่าวสารสำหรับหุ้นตัวนี้ในขณะนี้")
