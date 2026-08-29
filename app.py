@@ -1,6 +1,6 @@
 import streamlit as st
 import yfinance as yf
-import plotly.graph_objects as go  # นำเข้าเครื่องมือวาดกราฟแบบ Interactive
+import plotly.graph_objects as go
 
 # ตั้งชื่อหน้าเว็บ
 st.title("📈 คลังข้อมูลหุ้น Project Kairuay")
@@ -17,24 +17,26 @@ selected_period = st.radio("เลือกระยะเวลาของก�
 period_value = period_options[selected_period]
 
 # ส่วนที่ 1: แสดงราคาและสร้างกราฟย้อนหลัง
-st.write(f"**กราฟแท่งเทียน (Candlestick) ย้อนหลัง {selected_period}**")
+st.write(f"**กราฟราคาเส้น (Line Chart) ย้อนหลัง {selected_period}**")
 history = ticker_data.history(period=period_value)
 
 if not history.empty:
-    # สร้างกราฟแท่งเทียนสไตล์ Yahoo Finance
-    fig = go.Figure(data=[go.Candlestick(x=history.index,
-                    open=history['Open'],
-                    high=history['High'],
-                    low=history['Low'],
-                    close=history['Close'])])
+    # สร้างกราฟเส้น (Line Chart) แบบโต้ตอบได้
+    fig = go.Figure(data=[go.Scatter(
+        x=history.index, 
+        y=history['Close'], 
+        mode='lines', 
+        name='ราคาปิด (Close)',
+        line=dict(color='#0068C9', width=2) # สีน้ำเงินสไตล์กราฟหุ้น
+    )])
     
     # ปรับแต่งหน้าตากราฟ
     fig.update_layout(
-        xaxis_rangeslider_visible=False, # ปิดแถบเลื่อนด้านล่างให้ดูกระทัดรัด
         margin=dict(l=0, r=0, t=20, b=0),
         height=450,
         yaxis_title="ราคา",
-        xaxis_title="วันที่"
+        xaxis_title="วันที่",
+        hovermode="x unified" # แสดงเส้นประและกล่องข้อความโชว์ราคาเวลาเอาเมาส์ชี้
     )
     
     # แสดงกราฟบนหน้าเว็บ
@@ -47,7 +49,7 @@ st.write("**📰 ข่าวสารล่าสุด**")
 news = ticker_data.news
 
 if news:
-    # ใช้ .get() เพื่อป้องกัน Error กรณี Yahoo เปลี่ยนโครงสร้างข้อมูล
+    # ใช้ .get() เพื่อป้องกัน Error
     for item in news[:5]:
         title = item.get('title', f'อ่านข่าวอัปเดตล่าสุดของ {ticker_symbol}')
         link = item.get('link', f'https://finance.yahoo.com/quote/{ticker_symbol}')
