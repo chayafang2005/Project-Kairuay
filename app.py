@@ -12,12 +12,11 @@ st.write("พิมพ์สัญลักษณ์หุ้นที่ต้�
 # ==========================================
 # ส่วนที่ 1: ช่องค้นหาหุ้นและปุ่มลัดแนะนำ
 # ==========================================
-col_search, col_btn = st.columns([3, 1])
+col_search, _ = st.columns([3, 1])
 
 with col_search:
-    search_input = st.text_input("🔍 พิมพ์ชื่อย่อหุ้น (เช่น AAPL, MSFT, RKLB, MU, PLTR)", "RKLB").upper().strip()
+    search_input = st.text_input("🔍 พิมพ์ชื่อย่อหุ้น (เช่น AAPL, MSFT, RKLB, MU, PLTR)", "MU").upper().strip()
 
-# รายชื่อหุ้นยอดฮิตแนะนำ
 default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "MU", "PLTR", "META", "NFLX", "AMD", "RKLB"]
 
 st.markdown("**💡 หุ้นยอดฮิตแนะนำ:**")
@@ -29,10 +28,21 @@ for i, t in enumerate(default_tickers):
 
 st.divider()
 
-# กำหนดหุ้นที่จะนำไปแสดงผล
-ticker_symbol = search_input if search_input else "RKLB"
+ticker_symbol = search_input if search_input else "MU"
 ticker_data = yf.Ticker(ticker_symbol)
 info = ticker_data.info
+
+# ดึงข้อมูลโลโก้บริษัท
+company_name = info.get('longName') or ticker_symbol
+logo_url = info.get('logo_url')
+
+# แสดงหัวข้อพร้อมโลโก้ (ถ้ามีโลโก้)
+header_cols = st.columns([0.6, 9.4])
+with header_cols[0]:
+    if logo_url:
+        st.image(logo_url, width=50)
+with header_cols[1]:
+    st.markdown(f"## {company_name} ({ticker_symbol})")
 
 # ==========================================
 # ส่วนที่ 2: แสดงข้อมูลบริษัทและกราฟ (แบ่ง 2 คอลัมน์)
@@ -42,7 +52,6 @@ main_col, info_col = st.columns([2, 1])
 # ฝั่งขวา: ข้อมูลสำคัญและลักษณะธุรกิจ
 with info_col:
     st.markdown("### 📊 ข้อมูลสำคัญของหุ้น")
-    company_name = info.get('longName') or ticker_symbol
     sector = info.get('sector', 'ไม่ระบุ')
     industry = info.get('industry', 'ไม่ระบุ')
     market_cap = info.get('marketCap')
@@ -51,7 +60,6 @@ with info_col:
     low_52 = info.get('fiftyTwoWeekLow')
     summary = info.get('longBusinessSummary', 'ไม่มีข้อมูลคำอธิบายบริษัทในขณะนี้')
     
-    st.markdown(f"**ชื่อบริษัท:** {company_name}")
     st.markdown(f"**กลุ่มธุรกิจ (Sector):** {sector}")
     st.markdown(f"**อุตสาหกรรม:** {industry}")
     
