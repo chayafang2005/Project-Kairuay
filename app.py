@@ -25,6 +25,15 @@ st.write("**📰 ข่าวสารล่าสุด**")
 news = ticker_data.news
 
 if news:
+    # ใช้ .get() เพื่อป้องกัน Error กรณี Yahoo เปลี่ยนโครงสร้างข้อมูล
+    for item in news[:5]:
+        title = item.get('title', f'อ่านข่าวอัปเดตล่าสุดของ {ticker_symbol}')
+        link = item.get('link', f'https://finance.yahoo.com/quote/{ticker_symbol}')
+        st.write(f"- [{title}]({link})")
+else:
+    st.write("ไม่พบข่าวสารในขณะนี้")
+
+if news:
     # วนลูปแสดงพาดหัวข่าว 5 อันดับแรก พร้อมฝังลิงก์ให้กดอ่านต่อ
     for item in news[:5]:
         st.write(f"- [{item['title']}]({item['link']})")
