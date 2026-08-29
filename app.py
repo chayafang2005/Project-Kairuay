@@ -118,9 +118,9 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสารพร้อมสรุปย่อเป็นภาษาไทย
+# ส่วนที่ 4: ข่าวสาร (แปลเฉพาะหัวข้อ ป้องกัน Server Error)
 # ==========================================
-st.write("### 📰 LATEST NEWS (สรุปย่อภาษาไทย)")
+st.write("### 📰 LATEST NEWS (สรุปหัวข้อภาษาไทย)")
 
 rss_url = f"https://finance.yahoo.com/rss/headline?s={ticker_symbol}"
 feed = feedparser.parse(rss_url)
@@ -128,12 +128,9 @@ feed = feedparser.parse(rss_url)
 if feed.entries:
     translator = GoogleTranslator(source='auto', target='th')
     
-    for entry in feed.entries[:5]: # แสดง 5 ข่าวล่าสุดเพื่อให้โหลดหน้าเว็บได้รวดเร็ว
+    for entry in feed.entries[:5]:
         title = entry.get('title', 'ไม่มีหัวข้อข่าว')
         link = entry.get('link', '#')
-        
-        # ดึงเนื้อหาย่อจาก RSS Feed (ถ้ามี)
-        summary = entry.get('summary', title)
         
         publisher = "Yahoo Finance"
         if hasattr(entry, 'source') and 'title' in entry.source:
@@ -146,17 +143,15 @@ if feed.entries:
             except:
                 pass
 
-        # แปลหัวข้อและเนื้อหาย่อเป็นภาษาไทย
+        # แปลเฉพาะหัวข้อข่าวเพื่อป้องกัน Error 500
         try:
             th_title = translator.translate(title)
-            th_summary = translator.translate(summary)
         except:
             th_title = title
-            th_summary = summary
 
         st.markdown(f"**{publisher}** • {time_str}")
         st.markdown(f"[{th_title}]({link})")
-        st.markdown(f"<p style='color: #b0b0b0; font-size: 14px;'>{th_summary}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color: #b0b0b0; font-size: 13px;'>คลิกที่หัวข้อเพื่ออ่านรายละเอียดฉบับเต็มจากแหล่งข่าว</p>", unsafe_allow_html=True)
         st.write("---")
 else:
     st.warning("ไม่พบข้อมูลข่าวสารสำหรับหุ้นตัวนี้ในขณะนี้")
