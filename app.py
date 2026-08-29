@@ -15,7 +15,7 @@ ticker_data = yf.Ticker(ticker_symbol)
 # ==========================================
 col1, col2 = st.columns(2)
 with col1:
-    graph_type = st.radio("รูปแบบกราฟ", ["กราฟพื้นที่ (เหมือนแอป)", "กราฟแท่งเทียน (เหมือนเว็บ)"], horizontal=True)
+    graph_type = st.radio("รูปแบบกราฟ", ["กราฟพื้นที่", "กราฟแท่งเทียน"], horizontal=True)
 
 period_options = {"1 วัน": "1d", "5 วัน": "5d", "1 เดือน": "1mo", "3 เดือน": "3mo", "6 เดือน": "6mo", "1 ปี": "1y", "5 ปี": "5y"}
 selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True)
