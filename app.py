@@ -15,7 +15,7 @@ ticker_data = yf.Ticker(ticker_symbol)
 # ==========================================
 col1, col2 = st.columns(2)
 with col1:
-    graph_type = st.radio("รูปแบบกราฟ", ["กราฟพื้นที่", "กราฟแท่งเทียน"], horizontal=True)
+    graph_type = st.radio("รูปแบบกราฟ", ["กราฟพื้นที่ (เหมือนแอป)", "กราฟแท่งเทียน (เหมือนเว็บ)"], horizontal=True)
 
 period_options = {"1 วัน": "1d", "5 วัน": "5d", "1 เดือน": "1mo", "3 เดือน": "3mo", "6 เดือน": "6mo", "1 ปี": "1y", "5 ปี": "5y"}
 selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True)
@@ -59,7 +59,6 @@ if not history.empty:
     fig = go.Figure()
     
     if "พื้นที่" in graph_type:
-        # วาดกราฟพื้นที่แบบแอปมือถือ
         if current_price >= first_price:
             line_color = '#00C805' 
             fill_color = 'rgba(0, 200, 5, 0.1)'
@@ -83,7 +82,6 @@ if not history.empty:
                           "<span style='font-size:18px;'>เปลี่ยนแปลง: <b>%{customdata}</b></span><extra></extra>"
         ))
     else:
-        # วาดกราฟแท่งเทียนแบบเว็บไซต์ Yahoo
         fig.add_trace(go.Candlestick(
             x=history.index,
             open=history['Open'],
@@ -91,8 +89,8 @@ if not history.empty:
             low=history['Low'],
             close=history['Close'],
             name='ราคา',
-            increasing_line_color='#00C805', # สีเขียวสไตล์ Yahoo
-            decreasing_line_color='#FF3333'  # สีแดงสไตล์ Yahoo
+            increasing_line_color='#00C805',
+            decreasing_line_color='#FF3333'
         ))
     
     fig.update_layout(
@@ -103,7 +101,7 @@ if not history.empty:
         hovermode="x",
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        xaxis_rangeslider_visible=False # ปิดแถบเลื่อนด้านล่างของแท่งเทียนให้ดูสะอาดตา
+        xaxis_rangeslider_visible=False
     )
     st.plotly_chart(fig, use_container_width=True)
 else:
@@ -112,33 +110,33 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสารย้อนหลัง 1 สัปดาห์
+# ส่วนที่ 4: ข่าวสารย้อนหลัง 1 เดือน (พร้อมแสดงเวลา)
 # ==========================================
-st.write("**📰 ข่าวสารล่าสุด (เฉพาะ 1 สัปดาห์ที่ผ่านมา)**")
+st.write("**📰 ข่าวสารล่าสุด (เฉพาะ 1 เดือนที่ผ่านมา)**")
 news = ticker_data.news
 
 if news:
-    # คำนวณเวลา 1 สัปดาห์ที่แล้ว (หน่วยเป็นวินาที)
+    # คำนวณเวลา 1 เดือนที่แล้ว (ประมาณ 30 วัน)
     current_time = int(time.time())
-    one_week_ago = current_time - (7 * 24 * 60 * 60)
+    one_month_ago = current_time - (30 * 24 * 60 * 60)
     
-    # กรองเฉพาะข่าวที่ใหม่กว่า 1 สัปดาห์
-    recent_news = [item for item in news if item.get('providerPublishTime', 0) >= one_week_ago]
+    # กรองเฉพาะข่าวที่ใหม่กว่า 1 เดือน
+    recent_news = [item for item in news if item.get('providerPublishTime', 0) >= one_month_ago]
     
     if recent_news:
-        for item in recent_news[:5]:
+        for item in recent_news[:10]: # แสดงผลสูงสุด 10 ข่าว
             title = item.get('title', f'อ่านข่าวอัปเดตล่าสุดของ {ticker_symbol}')
             link = item.get('link', f'https://finance.yahoo.com/quote/{ticker_symbol}')
             
-            # ดึงเวลาข่าวมาแปลงเป็นวันที่ให้อ่านง่าย
+            # แปลงเวลาเป็น วันที่ และ เวลา (HH:MM)
             pub_time = item.get('providerPublishTime')
             date_str = ""
             if pub_time:
-                date_str = datetime.fromtimestamp(pub_time).strftime('%d %b %Y')
-                date_str = f" *(เมื่อ {date_str})*"
+                formatted_time = datetime.fromtimestamp(pub_time).strftime('%d %b %Y, %H:%M')
+                date_str = f" *(เมื่อ {formatted_time})*"
                 
             st.write(f"- [{title}]({link}){date_str}")
     else:
-        st.write("ไม่พบข่าวสารในรอบ 1 สัปดาห์ที่ผ่านมา")
+        st.write("ไม่พบข่าวสารในรอบ 1 เดือนที่ผ่านมา")
 else:
     st.write("ไม่พบข่าวสารในขณะนี้")
