@@ -6,32 +6,63 @@ from datetime import datetime
 
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
+# ตั้งค่าสถานะเริ่มต้นใน session_state
+if 'search_ticker' not in st.session_state:
+    st.session_state.search_ticker = "AAPL"
+
+# เก็บรายการหุ้นที่กดติดตาม (Watchlist) เริ่มต้นด้วยหุ้นฮิตบางตัว
+if 'watchlist' not in st.session_state:
+    st.session_state.watchlist = ["AAPL", "MSFT", "NVDA", "TSLA"]
+
 st.title("📈 Project Kairuay: คลังข้อมูลและกราฟหุ้นสหรัฐฯ")
-st.write("พิมพ์สัญลักษณ์หุ้น (Ticker) ของตลาดสหรัฐฯ ตัวใดก็ได้ที่คุณต้องการ เพื่อตรวจสอบข้อมูล กราฟ และข่าวสารแบบเรียลไทม์")
+st.write("พิมพ์สัญลักษณ์หุ้น (Ticker) ของตลาดสหรัฐฯ ตัวใดก็ได้ หรือกดปุ่มดาวเพื่อจัดการหุ้นติดตามของคุณ")
 
 # ==========================================
-# ส่วนที่ 1: ช่องค้นหาหุ้นแบบอิสระ (Global Search)
+# ส่วนที่ 1: ช่องค้นหาหุ้น & แผงจัดการ Watchlist (ดาว ⭐)
 # ==========================================
-col_search, _ = st.columns([3, 1])
+col_search, col_star = st.columns([2, 2])
 
 with col_search:
-    # ช่องพิมพ์ค้นหาอิสระ รองรับทุกหุ้นในตลาด US
-    search_input = st.text_input("🔍 พิมพ์รหัสหุ้นที่ต้องการ (เช่น AAPL, TSLA, PLTR, MU หรือหุ้นอื่นๆ)", "AAPL").upper().strip()
+    search_input = st.text_input("🔍 พิมพ์รหัสหุ้นที่ต้องการ (เช่น AAPL, TSLA, PLTR, MU)", st.session_state.search_ticker).upper().strip()
+    if search_input:
+        st.session_state.search_ticker = search_input
 
-# ปุ่มลัดสำหรับหุ้นยอดฮิตเพื่อความสะดวกรวดเร็ว
-default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "MU", "PLTR", "META", "NFLX", "AMD", "RKLB"]
+with col_star:
+    st.markdown("**⭐ หุ้นที่คุณติดตาม (Watchlist):**")
+    # แสดงปุ่มลัดหุ้นใน Watchlist
+    if st.session_state.watchlist:
+        w_cols = st.columns(min(len(st.session_state.watchlist), 5))
+        for idx, w_t in enumerate(st.session_state.watchlist[:5]):
+            with w_cols[idx % 5]:
+                if st.button(f"📌 {w_t}", use_container_width=True, key=f"btn_w_{w_t}"):
+                    st.session_state.search_ticker = w_t
+                    st.rerun()
+    else:
+        st.write("ยังไม่มีหุ้นในรายการติดตาม")
 
-st.markdown("**💡 หุ้นยอดฮิตแนะนำ (คลิกเพื่อเลือกด่วน):**")
-cols_hip = st.columns(6)
-for i, t in enumerate(default_tickers):
-    with cols_hip[i % 6]:
-        if st.button(f"📌 {t}", use_container_width=True):
-            search_input = t
+# ตรวจสอบสถานะดาวของหุ้นปัจจุบัน
+current_ticker = st.session_state.search_ticker
+is_watched = current_ticker in st.session_state.watchlist
+
+col_title, col_fav = st.columns([8, 2])
+
+# ปุ่มกดเพิ่ม/ลบดาว ⭐
+with col_fav:
+    st.write("")
+    if is_watched:
+        if st.button("★ เลิกติดตาม", use_container_width=True):
+            st.session_state.watchlist.remove(current_ticker)
+            st.rerun()
+    else:
+        if st.button("☆ เพิ่มเข้ารายการติดตาม", use_container_width=True):
+            if current_ticker not in st.session_state.watchlist:
+                st.session_state.watchlist.append(current_ticker)
+            st.rerun()
 
 st.divider()
 
-# กำหนดค่า Ticker จากสิ่งที่ผู้ใช้พิมพ์ค้นหา
-ticker_symbol = search_input if search_input else "AAPL"
+# กำหนดค่า Ticker จากสิ่งที่ผู้ใช้ค้นหา
+ticker_symbol = current_ticker if current_ticker else "AAPL"
 ticker_data = yf.Ticker(ticker_symbol)
 info = ticker_data.info
 
@@ -41,15 +72,14 @@ company_name = info.get('longName') or ticker_symbol
 if not info.get('regularMarketPrice') and not info.get('currentPrice') and len(ticker_data.history(period="1d")) == 0:
     st.error(f"❌ ไม่พบข้อมูลของหุ้นสัญลักษณ์ '{ticker_symbol}' กรุณาตรวจสอบความถูกต้องอีกครั้ง")
 else:
-    # แสดงชื่อหัวข้อและบริษัท
-    st.markdown(f"## 🏢 {company_name} ({ticker_symbol})")
+    with col_title:
+        st.markdown(f"## 🏢 {company_name} ({ticker_symbol})")
 
     # ==========================================
     # ส่วนที่ 2: แสดงข้อมูลบริษัทและกราฟ (แบ่ง 2 คอลัมน์)
     # ==========================================
     main_col, info_col = st.columns([2, 1])
 
-    # ฝั่งขวา: ข้อมูลสำคัญและลักษณะธุรกิจ
     with info_col:
         st.markdown("### 📊 ข้อมูลสำคัญของหุ้น")
         sector = info.get('sector', 'ไม่ระบุ')
@@ -85,7 +115,6 @@ else:
             summary_short = summary
         st.markdown(f"<p style='color: #d0d0d0; font-size: 13px; line-height: 1.5;'>{summary_short}</p>", unsafe_allow_html=True)
 
-    # ฝั่งซ้าย: ราคาปัจจุบัน, ช่วงเวลา และกราฟแท่งเทียน
     with main_col:
         period_options = {"1 วัน": "1d", "5 วัน": "5d", "1 เดือน": "1mo", "3 เดือน": "3mo", "6 เดือน": "6mo", "1 ปี": "1y", "5 ปี": "5y"}
         selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True, key="period_radio")
