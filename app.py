@@ -51,7 +51,6 @@ if not history.empty and current_price:
 if not history.empty:
     first_price = history['Close'].iloc[0]
     
-    # ตั้งเงื่อนไขสี: ถ้าราคาปัจจุบันน้อยกว่าจุดเริ่มต้นให้เป็นสีแดง ถ้ามากกว่าให้เป็นสีเขียว
     if current_price >= first_price:
         line_color = '#00C805' 
         fill_color = 'rgba(0, 200, 5, 0.1)'
@@ -59,37 +58,37 @@ if not history.empty:
         line_color = '#FF3333'
         fill_color = 'rgba(255, 51, 51, 0.1)'
 
-    # คำนวณเปอร์เซ็นต์การเปลี่ยนแปลงของทุกๆ จุดเพื่อนำไปแสดงในกล่องตอนเอาเมาส์ชี้
-    history['Pct_Change'] = ((history['Close'] - first_price) / first_price) * 100
+    # บังคับคำนวณและจัดรูปแบบเป็นข้อความ ทศนิยม 2 ตำแหน่ง พร้อมใส่เครื่องหมาย +/-
+    history['Pct_Change_Str'] = (((history['Close'] - first_price) / first_price) * 100).apply(lambda x: f"{x:+.2f}%")
 
     fig = go.Figure(data=[go.Scatter(
         x=history.index, 
         y=history['Close'], 
-        customdata=history['Pct_Change'],
+        customdata=history['Pct_Change_Str'], # ดึงข้อความที่จัดรูปแบบแล้วมาใช้งาน
         mode='lines', 
         name='ราคา',
         line=dict(color=line_color, width=2),
-        fill='tozeroy', # ระบายสีใต้กราฟ
+        fill='tozeroy',
         fillcolor=fill_color,
-        # ปรับแต่งกล่องข้อความตอนลากเมาส์ (ตัวเลขใหญ่)
-        hovertemplate="<span style='font-size:24px; font-weight:bold;'>%{y:,.2f}</span><br>" +
-                      "<span style='color:gray;'>%{x|%d %b %H:%M}</span><br>" +
-                      "เปลี่ยนแปลง: <b>%{customdata:+.2f}%</b><extra></extra>"
+        # ปรับขนาด font-size ของคำว่า "เปลี่ยนแปลง" ให้ใหญ่ขึ้นเป็น 18px 
+        hovertemplate="<span style='font-size:26px; font-weight:bold;'>%{y:,.2f}</span><br>" +
+                      "<span style='font-size:14px; color:gray;'>%{x|%d %b %H:%M}</span><br>" +
+                      "<span style='font-size:18px;'>เปลี่ยนแปลง: <b>%{customdata}</b></span><extra></extra>"
     )])
     
     fig.update_layout(
         margin=dict(l=0, r=0, t=10, b=0),
         height=400,
-        yaxis=dict(side='right', showgrid=False), # ย้ายราคาไปฝั่งขวา
+        yaxis=dict(side='right', showgrid=False),
         xaxis=dict(
             showgrid=False,
-            showspikes=True, # สร้างเส้น Crosshair แนวตั้ง
+            showspikes=True,
             spikemode='across',
             spikesnap='cursor',
             spikecolor="gray",
             spikethickness=1,
         ),
-        hovermode="x", # ให้กล่องข้อความลอยตามจุดตัด X
+        hovermode="x",
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
     )
