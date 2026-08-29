@@ -9,46 +9,87 @@ from datetime import datetime
 st.set_page_config(page_title="Project Kairuay", layout="wide")
 
 # ==========================================
-# เมนูด้านข้างสำหรับเลือกหน้าเว็บ
+# เมนูด้านข้างสำหรับเลือกหน้าเว็บ (สลับให้หน้าแรกเป็น US Stocks List)
 # ==========================================
 st.sidebar.title("📌 เมนูหลัก")
-page = st.sidebar.radio("เลือกหน้า", ["📊 ค้นหาและดูกราฟรายตัว", "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)"])
+page = st.sidebar.radio("เลือกหน้า", ["🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)", "📊 ค้นหาและดูกราฟรายตัว"])
 
 # ==========================================
-# หน้าที่ 1: รายชื่อหุ้นทั้งหมดในตลาดอเมริกา (เลือกดูแล้วกดสลับมาดูได้)
+# หน้าที่ 1: รายชื่อหุ้นยอดฮิตตลาดอเมริกา พร้อมราคาและเปอร์เซ็นต์แบบ Real-time
 # ==========================================
 if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)":
-    st.title("🇺🇸 คลังรายชื่อหุ้นยอดฮิตในตลาดสหรัฐอเมริกา")
-    st.write("เลือกหุ้นจากตารางด้านล่าง หรือพิมพ์สัญลักษณ์เพื่อดูข้อมูลเชิงลึก")
+    st.title("🇺🇸 กระดานหุ้นยอดฮิตตลาดสหรัฐอเมริกา (Real-time Market)")
+    st.write("ตารางแสดงข้อมูลราคาปัจจุบัน, เปอร์เซ็นต์การเปลี่ยนแปลง และราคาช่วงหลังปิดตลาดของหุ้นยอดฮิต")
+
+    # รายชื่อหุ้นตัวอย่าง
+    default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", "RKLB", "ONDS"]
     
-    # สร้างตารางรายชื่อหุ้นตัวอย่างในตลาด US (สามารถเพิ่มรายชื่อหุ้นอื่นๆ ได้ตามต้องการ)
-    us_stocks_data = {
-        "Ticker": ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", "RKLB", "ONDS"],
-        "Company Name": ["Apple Inc.", "Microsoft Corp.", "Alphabet Inc. (Google)", "Amazon.com Inc.", "NVIDIA Corp.", "Tesla Inc.", "Meta Platforms Inc.", "Netflix Inc.", "Advanced Micro Devices", "Intel Corp.", "Rocket Lab USA", "Ondas Holdings"],
-        "Sector": ["Technology", "Technology", "Communication", "Consumer Cyclical", "Technology", "Consumer Cyclical", "Technology", "Communication", "Technology", "Technology", "Industrials", "Technology"]
-    }
-    df_stocks = pd.DataFrame(us_stocks_data)
-    
-    # แสดงตารางให้ผู้ใช้เลือก
-    st.dataframe(df_stocks, use_container_width=True)
-    
-    st.info("💡 **วิธีใช้งาน:** นำชื่อย่อ (Ticker) เช่น AAPL หรือ NVDA ไปพิมพ์ค้นหาในหน้า **'ค้นหาและดูกราฟรายตัว'** ทางเมนูด้านซ้ายได้เลยครับ")
+    # ช่องค้นหาหุ้นในหน้ากระดาน
+    search_query = st.text_input("🔍 ค้นหาหรือกรองชื่อหุ้นในตาราง (เช่น AAPL, Tesla)", "")
+
+    @st.cache_data(ttl=60) # Cache ข้อมูลไว้ 60 วินาทีเพื่อความรวดเร็ว
+    def get_market_data(tickers):
+        data_list = []
+        for t in tickers:
+            try:
+                tk = yf.Ticker(t)
+                inf = tk.info
+                name = inf.get('longName') or t
+                sector = inf.get('sector', 'N/A')
+                price = inf.get('currentPrice') or inf.get('regularMarketPrice') or 0
+                prev_close = inf.get('previousClose') or inf.get('regularMarketPreviousClose') or price
+                
+                change = price - prev_close
+                pct_change = (change / prev_close) * 100 if prev_close else 0
+                
+                post_market = inf.get('postMarketPrice')
+                post_str = "-"
+                if post_market:
+                    post_change = post_market - price
+                    post_pct = (post_change / price) * 100
+                    sign_post = "+" if post_change >= 0 else ""
+                    post_str = f"{post_market:,.2f} ({sign_post}{post_change:,.2f} | {sign_post}{post_pct:.2f}%)"
+
+                data_list.append({
+                    "Ticker": t,
+                    "Company": name,
+                    "Sector": sector,
+                    "Price (USD)": round(price, 2),
+                    "Change": round(change, 2),
+                    "Change (%)": f"{pct_change:+.2f}%",
+                    "After-Hours": post_str
+                })
+            except:
+                continue
+        return pd.DataFrame(data_list)
+
+    with st.spinner("กำลังดึงข้อมูลราคาตลาดล่าสุด..."):
+        df_market = get_market_data(default_tickers)
+
+    # กรองข้อมูลตามช่องค้นหา
+    if search_query:
+        df_market = df_market[
+            df_market['Ticker'].str.contains(search_query, case=False, na=False) |
+            df_market['Company'].str.contains(search_query, case=False, na=False) |
+            df_market['Sector'].str.contains(search_query, case=False, na=False)
+        ]
+
+    # แสดงตารางข้อมูล
+    st.dataframe(df_market, use_container_width=True, hide_index=True)
+    st.info("💡 **คำแนะนำ:** คุณสามารถคลิกที่เมนูด้านซ้าย **'ค้นหาและดูกราฟรายตัว'** เพื่อเจาะลึกดูกราฟแท่งเทียน ข่าวสาร และรายละเอียดเชิงลึกของหุ้นแต่ละตัวได้ทันทีครับ")
 
 # ==========================================
-# หน้าที่ 2: หน้าหลักเดิม (ค้นหา กราฟ ข่าว ข้อมูลหุ้น)
+# หน้าที่ 2: ค้นหาและดูกราฟรายตัว (หน้าหลักเดิม)
 # ==========================================
 elif page == "📊 ค้นหาและดูกราฟรายตัว":
-    st.title("📈 คลังข้อมูลหุ้น Project Kairuay")
+    st.title("📈 คลังข้อมูลหุ้นรายตัว Project Kairuay")
 
-    # ช่องพิมพ์ชื่อหุ้น
     ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS, RKLB)", "RKLB")
     ticker_data = yf.Ticker(ticker_symbol)
     info = ticker_data.info
 
-    # แบ่งหน้าจอเป็น 2 ฝั่ง (ซ้าย: กราฟและข่าว [สัดส่วน 2], ขวา: ข้อมูลหุ้น [สัดส่วน 1])
     main_col, info_col = st.columns([2, 1])
 
-    # ฝั่งขวา: ข้อมูลเชิงลึกและลักษณะของหุ้น
     with info_col:
         st.markdown("### 📊 ข้อมูลสำคัญของหุ้น")
         
@@ -87,7 +128,6 @@ elif page == "📊 ค้นหาและดูกราฟรายตัว"
             summary_short = summary
         st.markdown(f"<p style='color: #d0d0d0; font-size: 13px; line-height: 1.5;'>{summary_short}</p>", unsafe_allow_html=True)
 
-    # ฝั่งซ้าย: ราคา กราฟ และข่าวสาร
     with main_col:
         period_options = {"1 วัน": "1d", "5 วัน": "5d", "1 เดือน": "1mo", "3 เดือน": "3mo", "6 เดือน": "6mo", "1 ปี": "1y", "5 ปี": "5y"}
         selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True)
@@ -105,7 +145,6 @@ elif page == "📊 ค้นหาและดูกราฟรายตัว"
         if not current_price and not history.empty:
             current_price = history['Close'].iloc[-1]
 
-        # แสดงราคาปัจจุบันและหลังปิดตลาด
         if not history.empty and current_price:
             past_price = history['Close'].iloc[0]
             price_change = current_price - past_price
@@ -127,7 +166,6 @@ elif page == "📊 ค้นหาและดูกราฟรายตัว"
             st.metric(label=f"ราคาปัจจุบันเทียบกับ {selected_period}ที่แล้ว", value=None, delta=delta_str)
             st.markdown(f"### {price_str}", unsafe_allow_html=True)
 
-        # วาดกราฟแท่งเทียน
         if not history.empty:
             fig = go.Figure(data=[go.Candlestick(
                 x=history.index,
@@ -156,7 +194,6 @@ elif page == "📊 ค้นหาและดูกราฟรายตัว"
 
         st.divider()
 
-        # ส่วนข่าวสาร
         st.write("### 📰 LATEST NEWS & SUMMARY")
 
         rss_url = f"https://finance.yahoo.com/rss/headline?s={ticker_symbol}"
