@@ -1,19 +1,18 @@
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
-import time
 from datetime import datetime
 
 st.title("📈 คลังข้อมูลหุ้น Project Kairuay")
 
 # ช่องพิมพ์ชื่อหุ้น
-ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS)", "ONDS")
+ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS, RKLB)", "RKLB")
 ticker_data = yf.Ticker(ticker_symbol)
 
 # ==========================================
 # ส่วนที่ 1: ตั้งค่ารูปแบบและช่วงเวลา
 # ==========================================
-col1, col2 = st.columns(2)
+col1, _ = st.columns(2)
 with col1:
     graph_type = st.radio("รูปแบบกราฟ", ["กราฟพื้นที่ (เหมือนแอป)", "กราฟแท่งเทียน (เหมือนเว็บ)"], horizontal=True)
 
@@ -110,33 +109,43 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสารย้อนหลัง 1 เดือน (พร้อมแสดงเวลา)
+# ส่วนที่ 4: ข่าวสารสไตล์การ์ด (มีรูปภาพและสำนักข่าว)
 # ==========================================
-st.write("**📰 ข่าวสารล่าสุด (เฉพาะ 1 เดือนที่ผ่านมา)**")
+st.write("### 📰 LATEST NEWS")
 news = ticker_data.news
 
 if news:
-    # คำนวณเวลา 1 เดือนที่แล้ว (ประมาณ 30 วัน)
-    current_time = int(time.time())
-    one_month_ago = current_time - (30 * 24 * 60 * 60)
-    
-    # กรองเฉพาะข่าวที่ใหม่กว่า 1 เดือน
-    recent_news = [item for item in news if item.get('providerPublishTime', 0) >= one_month_ago]
-    
-    if recent_news:
-        for item in recent_news[:10]: # แสดงผลสูงสุด 10 ข่าว
-            title = item.get('title', f'อ่านข่าวอัปเดตล่าสุดของ {ticker_symbol}')
-            link = item.get('link', f'https://finance.yahoo.com/quote/{ticker_symbol}')
+    for item in news[:6]: # แสดง 6 ข่าวล่าสุด
+        title = item.get('title', 'ไม่มีหัวข้อข่าว')
+        link = item.get('link', '#')
+        publisher = item.get('publisher', 'Yahoo Finance')
+        
+        # ดึงเวลาข่าว
+        pub_time = item.get('providerPublishTime')
+        time_str = ""
+        if pub_time:
+            time_str = datetime.fromtimestamp(pub_time).strftime('%d %b %Y, %H:%M')
             
-            # แปลงเวลาเป็น วันที่ และ เวลา (HH:MM)
-            pub_time = item.get('providerPublishTime')
-            date_str = ""
-            if pub_time:
-                formatted_time = datetime.fromtimestamp(pub_time).strftime('%d %b %Y, %H:%M')
-                date_str = f" *(เมื่อ {formatted_time})*"
+        # ดึงรูปภาพประกอบข่าว (ถ้ามี)
+        img_url = ""
+        try:
+            thumbnails = item.get('thumbnail', {}).get('resolutions', [])
+            if thumbnails:
+                img_url = thumbnails[0].get('url', '')
+        except:
+            pass
+
+        # จัดเลย์เอาต์ข่าวแบบ 2 คอลัมน์ (ซ้ายเป็นข้อความ ขวาเป็นรูปภาพ เหมือน Yahoo App)
+        col_news1, col_news2 = st.columns([3, 1])
+        
+        with col_news1:
+            st.markdown(f"**{publisher}** • {time_str}")
+            st.markdown(f"[{title}]({link})")
+            
+        with col_news2:
+            if img_url:
+                st.image(img_url, use_container_width=True)
                 
-            st.write(f"- [{title}]({link}){date_str}")
-    else:
-        st.write("ไม่พบข่าวสารในรอบ 1 เดือนที่ผ่านมา")
+        st.write("---")
 else:
-    st.write("ไม่พบข่าวสารในขณะนี้")
+    st.warning("ไม่พบข้อมูลข่าวสารในขณะนี้")
