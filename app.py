@@ -35,7 +35,7 @@ if not current_price and not history.empty:
     current_price = history['Close'].iloc[-1]
 
 # ==========================================
-# ส่วนที่ 2: แสดงราคาปัจจุบันและราคาหลังปิดตลาด (พร้อมเปอร์เซ็นต์)
+# ส่วนที่ 2: แสดงราคาปัจจุบันและราคาหลังปิดตลาด (ย้ายไปไว้ด้านล่างพร้อมสี)
 # ==========================================
 if not history.empty and current_price:
     past_price = history['Close'].iloc[0]
@@ -43,18 +43,28 @@ if not history.empty and current_price:
     percent_change = (price_change / past_price) * 100
     
     price_str = f"{current_price:,.2f}"
-    delta_str = f"{price_change:+,.2f} ({percent_change:+,.2f}%)"
     
-    # ตรวจสอบและคำนวณราคาหลังปิดตลาด (After-hours)
+    # ตรวจสอบราคาหลังปิดตลาด (After-hours)
     post_market = info.get('postMarketPrice')
-    regular_close = info.get('regularMarketPreviousClose') or past_price
-    
     if post_market:
         post_change = post_market - current_price
         post_percent = (post_change / current_price) * 100
-        price_str += f" (หลังปิดตลาด: {post_market:,.2f} | {post_change:+,.2f} [{post_percent:+,.2f}%])"
-         
-    st.metric(label=f"ราคาปัจจุบันเทียบกับ {selected_period}ที่แล้ว", value=price_str, delta=delta_str)
+        
+        # กำหนดสีและเครื่องหมายสำหรับหลังปิดตลาด (+ สีเขียว, - สีแดง)
+        post_color = "#00C805" if post_change >= 0 else "#FF3333"
+        post_sign = "+" if post_change >= 0 else ""
+        
+        # ต่อท้ายราคาหลักด้วยข้อมูลหลังปิดตลาดแบบมีสี
+        price_str += f' <span style="font-size:16px; color:gray;">(หลังปิดตลาด: {post_market:,.2f} <span style="color:{post_color};">{post_sign}{post_change:,.2f} [{post_sign}{post_percent:.2f}%]</span>)</span>'
+
+    # สร้างข้อความ Delta ปกติ
+    delta_sign = "+" if price_change >= 0 else ""
+    delta_str = f"{delta_sign}{price_change:,.2f} ({delta_sign}{percent_change:.2f}%)"
+    
+    st.metric(label=f"ราคาปัจจุบันเทียบกับ {selected_period}ที่แล้ว", value=None, delta=delta_str)
+    
+    # ใช้ Markdown แสดงผลตัวเลขหลักพร้อมข้อมูลหลังปิดตลาดที่จัดสีแล้ว
+    st.markdown(f"### {price_str}")
 
 # ==========================================
 # ส่วนที่ 3: วาดกราฟ
