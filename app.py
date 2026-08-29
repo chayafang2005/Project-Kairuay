@@ -1,18 +1,24 @@
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
+import time
+from datetime import datetime
 
 st.title("📈 คลังข้อมูลหุ้น Project Kairuay")
 
-# สร้างช่องให้พิมพ์ชื่อหุ้น
+# ช่องพิมพ์ชื่อหุ้น
 ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS)", "ONDS")
 ticker_data = yf.Ticker(ticker_symbol)
 
 # ==========================================
-# ส่วนที่ 1: ดึงข้อมูลและปุ่มเลือกช่วงเวลา
+# ส่วนที่ 1: ตั้งค่ารูปแบบและช่วงเวลา
 # ==========================================
+col1, col2 = st.columns(2)
+with col1:
+    graph_type = st.radio("รูปแบบกราฟ", ["กราฟพื้นที่ (เหมือนแอป)", "กราฟแท่งเทียน (เหมือนเว็บ)"], horizontal=True)
+
 period_options = {"1 วัน": "1d", "5 วัน": "5d", "1 เดือน": "1mo", "3 เดือน": "3mo", "6 เดือน": "6mo", "1 ปี": "1y", "5 ปี": "5y"}
-selected_period = st.radio("เลือกระยะเวลาของกราฟ", list(period_options.keys()), horizontal=True)
+selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True)
 period_value = period_options[selected_period]
 
 interval_value = "1d"
@@ -29,7 +35,7 @@ if not current_price and not history.empty:
     current_price = history['Close'].iloc[-1]
 
 # ==========================================
-# ส่วนที่ 2: แสดงราคาปัจจุบันตัวใหญ่
+# ส่วนที่ 2: แสดงราคาปัจจุบัน
 # ==========================================
 if not history.empty and current_price:
     past_price = history['Close'].iloc[0]
@@ -46,52 +52,93 @@ if not history.empty and current_price:
     st.metric(label=f"ราคาปัจจุบันเทียบกับ {selected_period}ที่แล้ว", value=price_str, delta=delta_str)
 
 # ==========================================
-# ส่วนที่ 3: กราฟสไตล์ Yahoo Finance App
+# ส่วนที่ 3: วาดกราฟ
 # ==========================================
 if not history.empty:
     first_price = history['Close'].iloc[0]
+    fig = go.Figure()
     
-    if current_price >= first_price:
-        line_color = '#00C805' 
-        fill_color = 'rgba(0, 200, 5, 0.1)'
+    if "พื้นที่" in graph_type:
+        # วาดกราฟพื้นที่แบบแอปมือถือ
+        if current_price >= first_price:
+            line_color = '#00C805' 
+            fill_color = 'rgba(0, 200, 5, 0.1)'
+        else:
+            line_color = '#FF3333'
+            fill_color = 'rgba(255, 51, 51, 0.1)'
+
+        history['Pct_Change_Str'] = (((history['Close'] - first_price) / first_price) * 100).apply(lambda x: f"{x:+.2f}%")
+
+        fig.add_trace(go.Scatter(
+            x=history.index, 
+            y=history['Close'], 
+            customdata=history['Pct_Change_Str'],
+            mode='lines', 
+            name='ราคา',
+            line=dict(color=line_color, width=2),
+            fill='tozeroy',
+            fillcolor=fill_color,
+            hovertemplate="<span style='font-size:26px; font-weight:bold;'>%{y:,.2f}</span><br>" +
+                          "<span style='font-size:14px; color:gray;'>%{x|%d %b %H:%M}</span><br>" +
+                          "<span style='font-size:18px;'>เปลี่ยนแปลง: <b>%{customdata}</b></span><extra></extra>"
+        ))
     else:
-        line_color = '#FF3333'
-        fill_color = 'rgba(255, 51, 51, 0.1)'
-
-    # บังคับคำนวณและจัดรูปแบบเป็นข้อความ ทศนิยม 2 ตำแหน่ง พร้อมใส่เครื่องหมาย +/-
-    history['Pct_Change_Str'] = (((history['Close'] - first_price) / first_price) * 100).apply(lambda x: f"{x:+.2f}%")
-
-    fig = go.Figure(data=[go.Scatter(
-        x=history.index, 
-        y=history['Close'], 
-        customdata=history['Pct_Change_Str'], # ดึงข้อความที่จัดรูปแบบแล้วมาใช้งาน
-        mode='lines', 
-        name='ราคา',
-        line=dict(color=line_color, width=2),
-        fill='tozeroy',
-        fillcolor=fill_color,
-        # ปรับขนาด font-size ของคำว่า "เปลี่ยนแปลง" ให้ใหญ่ขึ้นเป็น 18px 
-        hovertemplate="<span style='font-size:26px; font-weight:bold;'>%{y:,.2f}</span><br>" +
-                      "<span style='font-size:14px; color:gray;'>%{x|%d %b %H:%M}</span><br>" +
-                      "<span style='font-size:18px;'>เปลี่ยนแปลง: <b>%{customdata}</b></span><extra></extra>"
-    )])
+        # วาดกราฟแท่งเทียนแบบเว็บไซต์ Yahoo
+        fig.add_trace(go.Candlestick(
+            x=history.index,
+            open=history['Open'],
+            high=history['High'],
+            low=history['Low'],
+            close=history['Close'],
+            name='ราคา',
+            increasing_line_color='#00C805', # สีเขียวสไตล์ Yahoo
+            decreasing_line_color='#FF3333'  # สีแดงสไตล์ Yahoo
+        ))
     
     fig.update_layout(
         margin=dict(l=0, r=0, t=10, b=0),
         height=400,
         yaxis=dict(side='right', showgrid=False),
-        xaxis=dict(
-            showgrid=False,
-            showspikes=True,
-            spikemode='across',
-            spikesnap='cursor',
-            spikecolor="gray",
-            spikethickness=1,
-        ),
+        xaxis=dict(showgrid=False, showspikes=True, spikemode='across', spikesnap='cursor', spikecolor="gray", spikethickness=1),
         hovermode="x",
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
+        xaxis_rangeslider_visible=False # ปิดแถบเลื่อนด้านล่างของแท่งเทียนให้ดูสะอาดตา
     )
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.warning("ไม่พบข้อมูลกราฟของหุ้นนี้")
+
+st.divider()
+
+# ==========================================
+# ส่วนที่ 4: ข่าวสารย้อนหลัง 1 สัปดาห์
+# ==========================================
+st.write("**📰 ข่าวสารล่าสุด (เฉพาะ 1 สัปดาห์ที่ผ่านมา)**")
+news = ticker_data.news
+
+if news:
+    # คำนวณเวลา 1 สัปดาห์ที่แล้ว (หน่วยเป็นวินาที)
+    current_time = int(time.time())
+    one_week_ago = current_time - (7 * 24 * 60 * 60)
+    
+    # กรองเฉพาะข่าวที่ใหม่กว่า 1 สัปดาห์
+    recent_news = [item for item in news if item.get('providerPublishTime', 0) >= one_week_ago]
+    
+    if recent_news:
+        for item in recent_news[:5]:
+            title = item.get('title', f'อ่านข่าวอัปเดตล่าสุดของ {ticker_symbol}')
+            link = item.get('link', f'https://finance.yahoo.com/quote/{ticker_symbol}')
+            
+            # ดึงเวลาข่าวมาแปลงเป็นวันที่ให้อ่านง่าย
+            pub_time = item.get('providerPublishTime')
+            date_str = ""
+            if pub_time:
+                date_str = datetime.fromtimestamp(pub_time).strftime('%d %b %Y')
+                date_str = f" *(เมื่อ {date_str})*"
+                
+            st.write(f"- [{title}]({link}){date_str}")
+    else:
+        st.write("ไม่พบข่าวสารในรอบ 1 สัปดาห์ที่ผ่านมา")
+else:
+    st.write("ไม่พบข่าวสารในขณะนี้")
