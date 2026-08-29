@@ -11,114 +11,87 @@ if 'selected_ticker' not in st.session_state:
     st.session_state.selected_ticker = "RKLB"
 
 if 'current_page' not in st.session_state:
-    st.session_state.current_page = "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)"
-
-default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", "RKLB", "ONDS"]
+    st.session_state.current_page = "🇺🇸 ค้นหาหุ้นในตลาดสหรัฐฯ"
 
 st.sidebar.title("📌 เมนูหลัก")
-page_options = ["🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)", "📊 ค้นหาและดูกราฟรายตัว"]
+page_options = ["🇺🇸 ค้นหาหุ้นในตลาดสหรัฐฯ", "📊 ดูกราฟและข้อมูลรายตัว"]
 
 current_index = page_options.index(st.session_state.current_page) if st.session_state.current_page in page_options else 0
 page = st.sidebar.radio("เลือกหน้า", page_options, index=current_index)
 st.session_state.current_page = page
 
 # ==========================================
-# หน้าที่ 1: กระดานหุ้นยอดฮิตตลาดอเมริกา
+# หน้าที่ 1: ค้นหาหุ้นทุกตัวในตลาดสหรัฐฯ
 # ==========================================
-if page == "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)":
-    st.title("🇺🇸 กระดานหุ้นยอดฮิตตลาดสหรัฐอเมริกา (Real-time Market)")
-    st.write("💡 **คลิกเลือกแถวในตาราง** หรือเลือกจากเมนูด่วนด้านล่างเพื่อดูข้อมูลเชิงลึกได้ทันทีครับ")
+if page == "🇺🇸 ค้นหาหุ้นในตลาดสหรัฐฯ":
+    st.title("🇺🇸 ค้นหาข้อมูลหุ้นทั้งหมดในตลาดสหรัฐอเมริกา")
+    st.write("พิมพ์สัญลักษณ์หุ้น (Ticker) หรือชื่อบริษัทที่ต้องการ เพื่อตรวจสอบราคาและข้อมูลแบบ Real-time ได้ทันทีครับ")
 
-    col_sel1, col_sel2 = st.columns([3, 1])
-    with col_sel1:
-        selected_btn = st.selectbox("🎯 เลือกหุ้นที่ต้องการดูข้อมูลด่วน:", default_tickers, index=default_tickers.index(st.session_state.selected_ticker) if st.session_state.selected_ticker in default_tickers else 0)
-    with col_sel2:
-        st.write("")
-        st.write("")
-        if st.button("🚀 ไปดูข้อมูลเชิงลึก", use_container_width=True):
-            st.session_state.selected_ticker = selected_btn
-            st.session_state.current_page = "📊 ค้นหาและดูกราฟรายตัว"
-            st.rerun()
+    # ช่องค้นหาอิสระ รองรับหุ้นทุกตัวใน US Market
+    search_input = st.text_input("🔍 พิมพ์ชื่อย่อหุ้น (เช่น MU, PLTR, AAPL, TSLA)", "").upper().strip()
+
+    if search_input:
+        with st.spinner(f"กำลังดึงข้อมูลของหุ้น {search_input}..."):
+            try:
+                tk = yf.Ticker(search_input)
+                inf = tk.info
+                name = inf.get('longName')
+                
+                if not name:
+                    st.error(不พบข้อมูลหุ้นสัญลักษณ์นี้ กรุณาตรวจสอบความถูกต้องอีกครั้ง)
+                else:
+                    sector = inf.get('sector', 'N/A')
+                    price = inf.get('currentPrice') or inf.get('regularMarketPrice') or 0
+                    prev_close = inf.get('previousClose') or inf.get('regularMarketPreviousClose') or price
+                    change = price - prev_close
+                    pct_change = (change / prev_close) * 100 if prev_close else 0
+                    
+                    post_market = inf.get('postMarketPrice')
+                    post_str = "-"
+                    if post_market:
+                        post_change = post_market - price
+                        post_pct = (post_change / price) * 100
+                        sign_post = "+" if post_change >= 0 else ""
+                        post_str = f"{post_market:,.2f} ({sign_post}{post_change:,.2f} | {sign_post}{post_pct:.2f}%)"
+
+                    # แสดงผลลัพธ์เป็น Card สรุปข้อมูล
+                    st.success(f"พบบริษัท: {name} ({search_input})")
+                    
+                    col_res1, col_res2, col_res3 = st.columns(3)
+                    col_res1.metric("ราคาปัจจุบัน", f"${price:,.2f}", f"{change:+,.2f} ({pct_change:+.2f}%)")
+                    col_res2.metric("กลุ่มธุรกิจ", sector)
+                    col_res3.write(f"**ราคาหลังปิดตลาด:** {post_str}")
+
+                    if st.button(f"📈 ไปดูกราฟและรายละเอียดเชิงลึกของ {search_input}", use_container_width=True):
+                        st.session_state.selected_ticker = search_input
+                        st.session_state.current_page = "📊 ดูกราฟและข้อมูลรายตัว"
+                        st.rerun()
+            except Exception as e:
+                st.error("ไม่สามารถดึงข้อมูลหุ้นตัวนี้ได้ในขณะนี้")
 
     st.divider()
+    st.markdown("### 💡 หุ้นยอดฮิตแนะนำ (คลิกเพื่อเลือก)")
+    default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "MU", "PLTR", "META", "NFLX", "AMD", "RKLB"]
     
-    search_query = st.text_input("🔍 ค้นหาหรือกรองชื่อหุ้นในตาราง", "")
-
-    @st.cache_data(ttl=60)
-    def get_market_data(tickers):
-        data_list = []
-        for t in tickers:
-            try:
-                tk = yf.Ticker(t)
-                inf = tk.info
-                name = inf.get('longName') or t
-                sector = inf.get('sector', 'N/A')
-                price = inf.get('currentPrice') or inf.get('regularMarketPrice') or 0
-                prev_close = inf.get('previousClose') or inf.get('regularMarketPreviousClose') or price
-                
-                change = price - prev_close
-                pct_change = (change / prev_close) * 100 if prev_close else 0
-                
-                post_market = inf.get('postMarketPrice')
-                post_str = "-"
-                if post_market:
-                    post_change = post_market - price
-                    post_pct = (post_change / price) * 100
-                    sign_post = "+" if post_change >= 0 else ""
-                    post_str = f"{post_market:,.2f} ({sign_post}{post_change:,.2f} | {sign_post}{post_pct:.2f}%)"
-
-                data_list.append({
-                    "Ticker": t,
-                    "Company": name,
-                    "Sector": sector,
-                    "Price (USD)": round(price, 2),
-                    "Change": round(change, 2),
-                    "Change (%)": f"{pct_change:+.2f}%",
-                    "After-Hours": post_str
-                })
-            except:
-                continue
-        return pd.DataFrame(data_list)
-
-    with st.spinner("กำลังดึงข้อมูลราคาตลาดล่าสุด..."):
-        df_market = get_market_data(default_tickers)
-
-    if search_query:
-        df_market = df_market[
-            df_market['Ticker'].str.contains(search_query, case=False, na=False) |
-            df_market['Company'].str.contains(search_query, case=False, na=False) |
-            df_market['Sector'].str.contains(search_query, case=False, na=False)
-        ]
-
-    event = st.dataframe(
-        df_market, 
-        use_container_width=True, 
-        hide_index=True,
-        on_select="rerun",
-        selection_mode="single-row"
-    )
-
-    selected_rows = event.selection.get("rows", [])
-    if selected_rows:
-        row_index = selected_rows[0]
-        chosen_ticker = df_market.iloc[row_index]["Ticker"]
-        st.session_state.selected_ticker = chosen_ticker
-        st.session_state.current_page = "📊 ค้นหาและดูกราฟรายตัว"
-        st.rerun()
+    cols = st.columns(6)
+    for i, t in enumerate(default_tickers):
+        with cols[i % 6]:
+            if st.button(f"📌 {t}", use_container_width=True):
+                st.session_state.selected_ticker = t
+                st.session_state.current_page = "📊 ดูกราฟและข้อมูลรายตัว"
+                st.rerun()
 
 # ==========================================
-# หน้าที่ 2: ค้นหาและดูกราฟรายตัว (พร้อมปุ่มย้อนกลับ)
+# หน้าที่ 2: ดูกราฟและข้อมูลรายตัว
 # ==========================================
-elif page == "📊 ค้นหาและดูกราฟรายตัว":
-    
-    # ปุ่มย้อนกลับไปหน้ากระดานหุ้น
-    if st.button("⬅️ กลับไปหน้ากระดานหุ้นทั้งหมด"):
-        st.session_state.current_page = "🇺🇸 หุ้นยอดฮิตตลาดอเมริกา (US Stocks List)"
+elif page == "📊 ดูกราฟและข้อมูลรายตัว":
+    if st.button("⬅️ กลับไปหน้าค้นหาหุ้น"):
+        st.session_state.current_page = "🇺🇸 ค้นหาหุ้นในตลาดสหรัฐฯ"
         st.rerun()
 
     st.title("📈 คลังข้อมูลหุ้นรายตัว Project Kairuay")
 
-    ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น AAPL, TSLA, ONDS, RKLB)", st.session_state.selected_ticker)
+    ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ้น (เช่น MU, PLTR, AAPL)", st.session_state.selected_ticker)
     st.session_state.selected_ticker = ticker_symbol.upper()
 
     ticker_data = yf.Ticker(ticker_symbol)
