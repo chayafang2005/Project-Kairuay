@@ -48,7 +48,7 @@ if not history.empty and current_price:
     if post_market:
          price_str += f" (หลังปิดตลาด: {post_market:,.2f})"
          
-    st.metric(label=f"ราคาปัจจุบันเทียบกับ {selected_period}ที่แล้ว", value=price_str, delta=delta_str)
+    st.metric(label=f"ราคาปัจจุบันเทียบกับหลัก {selected_period}ที่แล้ว", value=price_str, delta=delta_str)
 
 # ==========================================
 # ส่วนที่ 3: วาดกราฟ
@@ -109,24 +109,36 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสารสไตล์การ์ด (มีรูปภาพและสำนักข่าว)
+# ส่วนที่ 4: ข่าวสารสไตล์การ์ด (รองรับโครงสร้างใหม่)
 # ==========================================
 st.write("### 📰 LATEST NEWS")
 news = ticker_data.news
 
 if news:
-    for item in news[:6]: # แสดง 6 ข่าวล่าสุด
-        title = item.get('title', 'ไม่มีหัวข้อข่าว')
-        link = item.get('link', '#')
+    for item in news[:6]:
+        # รองรับการดึงหัวข้อข่าวจากหลายคีย์ที่ Yahoo อาจจะใช้
+        title = item.get('title') or item.get('content') or item.get('headline') or 'อัปเดตข่าวสารการลงทุน'
+        
+        # จัดการกรณีลิงก์ข่าวอยู่ในรูปแบบ nested dictionary
+        link = "#"
+        raw_link = item.get('link')
+        if isinstance(raw_link, dict):
+            link = raw_link.get('url', '#')
+        elif isinstance(raw_link, str):
+            link = raw_link
+            
         publisher = item.get('publisher', 'Yahoo Finance')
         
         # ดึงเวลาข่าว
         pub_time = item.get('providerPublishTime')
         time_str = ""
         if pub_time:
-            time_str = datetime.fromtimestamp(pub_time).strftime('%d %b %Y, %H:%M')
+            try:
+                time_str = datetime.fromtimestamp(pub_time).strftime('%d %b %Y, %H:%M')
+            except:
+                pass
             
-        # ดึงรูปภาพประกอบข่าว (ถ้ามี)
+        # ดึงรูปภาพประกอบข่าว
         img_url = ""
         try:
             thumbnails = item.get('thumbnail', {}).get('resolutions', [])
@@ -135,7 +147,6 @@ if news:
         except:
             pass
 
-        # จัดเลย์เอาต์ข่าวแบบ 2 คอลัมน์ (ซ้ายเป็นข้อความ ขวาเป็นรูปภาพ เหมือน Yahoo App)
         col_news1, col_news2 = st.columns([3, 1])
         
         with col_news1:
