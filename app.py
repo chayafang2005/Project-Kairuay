@@ -15,7 +15,7 @@ st.write("พิมพ์สัญลักษณ์หุ้นที่ต้�
 col_search, _ = st.columns([3, 1])
 
 with col_search:
-    search_input = st.text_input("🔍 พิมพ์ชื่อย่อหุ้น (เช่น AAPL, MSFT, RKLB, MU, PLTR)", "MU").upper().strip()
+    search_input = st.text_input("🔍 พิมพ์ชื่อย่อหุ้น (เช่น AAPL, MSFT, RKLB, MU, PLTR)", "ONDS").upper().strip()
 
 default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "MU", "PLTR", "META", "NFLX", "AMD", "RKLB"]
 
@@ -28,21 +28,24 @@ for i, t in enumerate(default_tickers):
 
 st.divider()
 
-ticker_symbol = search_input if search_input else "MU"
+ticker_symbol = search_input if search_input else "ONDS"
 ticker_data = yf.Ticker(ticker_symbol)
 info = ticker_data.info
 
-# ดึงข้อมูลโลโก้บริษัท
 company_name = info.get('longName') or ticker_symbol
-logo_url = info.get('logo_url')
 
-# แสดงหัวข้อพร้อมโลโก้ (ถ้ามีโลโก้)
-header_cols = st.columns([0.6, 9.4])
-with header_cols[0]:
-    if logo_url:
-        st.image(logo_url, width=50)
-with header_cols[1]:
-    st.markdown(f"## {company_name} ({ticker_symbol})")
+# ดึงเว็บไซต์บริษัทมาต่อกับ Clearbit Logo API เพื่อให้ได้รูปโลโก้ที่สวยงามและแม่นยำ
+logo_html = ""
+website = info.get('website')
+if website:
+    import urllib.parse
+    parsed_domain = urllib.parse.urlparse(website).netloc
+    if parsed_domain:
+        logo_url = f"https://logo.clearbit.com/{parsed_domain}"
+        logo_html = f"<img src='{logo_url}' width='40' style='vertical-align: middle; margin-right: 10px; border-radius: 6px;'>"
+
+# แสดงหัวข้อพร้อมโลโก้บริษัท
+st.markdown(f"### {logo_html} **{company_name} ({ticker_symbol})**", unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: แสดงข้อมูลบริษัทและกราฟ (แบ่ง 2 คอลัมน์)
