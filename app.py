@@ -11,12 +11,8 @@ ticker_symbol = st.text_input("พิมพ์สัญลักษณ์หุ�
 ticker_data = yf.Ticker(ticker_symbol)
 
 # ==========================================
-# ส่วนที่ 1: ตั้งค่ารูปแบบและช่วงเวลา
+# ส่วนที่ 1: ตั้งค่าช่วงเวลา
 # ==========================================
-col1, _ = st.columns(2)
-with col1:
-    graph_type = st.radio("รูปแบบกราฟ", ["กราฟพื้นที่ (เหมือนแอป)", "กราฟแท่งเทียน (เหมือนเว็บ)"], horizontal=True)
-
 period_options = {"1 วัน": "1d", "5 วัน": "5d", "1 เดือน": "1mo", "3 เดือน": "3mo", "6 เดือน": "6mo", "1 ปี": "1y", "5 ปี": "5y"}
 selected_period = st.radio("เลือกระยะเวลา", list(period_options.keys()), horizontal=True)
 period_value = period_options[selected_period]
@@ -59,46 +55,19 @@ if not history.empty and current_price:
     st.markdown(f"### {price_str}", unsafe_allow_html=True)
 
 # ==========================================
-# ส่วนที่ 3: วาดกราฟ
+# ส่วนที่ 3: วาดกราฟ (ใช้กราฟแท่งเทียนสไตล์เว็บ Yahoo)
 # ==========================================
 if not history.empty:
-    first_price = history['Close'].iloc[0]
-    fig = go.Figure()
-    
-    if "พื้นที่" in graph_type:
-        if current_price >= first_price:
-            line_color = '#00C805' 
-            fill_color = 'rgba(0, 200, 5, 0.1)'
-        else:
-            line_color = '#FF3333'
-            fill_color = 'rgba(255, 51, 51, 0.1)'
-
-        history['Pct_Change_Str'] = (((history['Close'] - first_price) / first_price) * 100).apply(lambda x: f"{x:+.2f}%")
-
-        fig.add_trace(go.Scatter(
-            x=history.index, 
-            y=history['Close'], 
-            customdata=history['Pct_Change_Str'],
-            mode='lines', 
-            name='ราคา',
-            line=dict(color=line_color, width=2),
-            fill='tozeroy',
-            fillcolor=fill_color,
-            hovertemplate="<span style='font-size:26px; font-weight:bold;'>%{y:,.2f}</span><br>" +
-                          "<span style='font-size:14px; color:gray;'>%{x|%d %b %H:%M}</span><br>" +
-                          "<span style='font-size:18px;'>เปลี่ยนแปลง: <b>%{customdata}</b></span><extra></extra>"
-        ))
-    else:
-        fig.add_trace(go.Candlestick(
-            x=history.index,
-            open=history['Open'],
-            high=history['High'],
-            low=history['Low'],
-            close=history['Close'],
-            name='ราคา',
-            increasing_line_color='#00C805',
-            decreasing_line_color='#FF3333'
-        ))
+    fig = go.Figure(data=[go.Candlestick(
+        x=history.index,
+        open=history['Open'],
+        high=history['High'],
+        low=history['Low'],
+        close=history['Close'],
+        name='ราคา',
+        increasing_line_color='#00C805',
+        decreasing_line_color='#FF3333'
+    )])
     
     fig.update_layout(
         margin=dict(l=0, r=0, t=10, b=0),
@@ -117,9 +86,9 @@ else:
 st.divider()
 
 # ==========================================
-# ส่วนที่ 4: ข่าวสาร (แสดงผลแบบเสถียร ปราศจาก Error)
+# ส่วนที่ 4: ข่าวสารพร้อมเนื้อหาย่อใต้หัวข้อ
 # ==========================================
-st.write("### 📰 LATEST NEWS")
+st.write("### 📰 LATEST NEWS & SUMMARY")
 
 rss_url = f"https://finance.yahoo.com/rss/headline?s={ticker_symbol}"
 feed = feedparser.parse(rss_url)
@@ -128,6 +97,7 @@ if feed.entries:
     for entry in feed.entries[:6]:
         title = entry.get('title', 'ไม่มีหัวข้อข่าว')
         link = entry.get('link', '#')
+        summary = entry.get('summary', 'คลิกที่หัวข้อเพื่ออ่านเนื้อหาฉบับเต็ม')
         
         publisher = "Yahoo Finance"
         if hasattr(entry, 'source') and 'title' in entry.source:
@@ -142,6 +112,7 @@ if feed.entries:
 
         st.markdown(f"**{publisher}** • {time_str}")
         st.markdown(f"[{title}]({link})")
+        st.markdown(f"<p style='color: #b0b0b0; font-size: 14px; margin-top: -5px;'>{summary}</p>", unsafe_allow_html=True)
         st.write("---")
 else:
     st.warning("ไม่พบข้อมูลข่าวสารสำหรับหุ้นตัวนี้ในขณะนี้")
